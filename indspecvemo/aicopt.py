@@ -7,11 +7,11 @@ import os
 from itertools import combinations as itercombinations, product as iterproduct
 from concurrent.futures import as_completed
 from collections import defaultdict
-from settriec import SetTrie
+from settrie import SetTrie
 import warnings
 
 import numpy as np
-from pebble import ProcessPool, ThreadPool
+from pebble import ProcessPool
 
 DEBUGMODE = False
 

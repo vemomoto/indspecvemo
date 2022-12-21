@@ -1,9 +1,7 @@
 # distutils: language=c
 #cython: language_level=3, boundscheck=False, wraparound=False, nonecheck=False
 '''
-Created on 05.07.2016
-
-@author Samuel
+@author Samuel Fischer
 '''
 
 from datrie cimport BaseTrie, BaseState, BaseIterator

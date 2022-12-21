@@ -1,0 +1,6 @@
+**.pyd
+build/**
+**settrie.cpp
+**settrie.html
+**.egg-info
+.vscode/*

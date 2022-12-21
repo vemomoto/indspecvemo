@@ -1,7 +1,7 @@
 '''
 Created on 09.05.2020
 
-@author: Samuel
+@author: Samuel M. Fischer
 '''
 from functools import partial
 from itertools import repeat, count, chain as iterchain,  product as iterproduct
@@ -16,34 +16,24 @@ from numpy.lib import recfunctions
 import scipy.optimize as op
 from scipy.stats import nbinom, vonmises
 from scipy.sparse import csr_matrix
-import scipy as sp
 from scipy.special import binom, hyp2f1
 import pandas as pd
-import matplotlib
 import numdifftools as nd
-from numba import jit, njit
 
-if os.name == 'posix':
-    # if executed on a Windows server. Comment out this line, if you are working
-    # on a desktop computer that is not Windows.
-    matplotlib.use('Agg')
 from matplotlib import pyplot as plt
     
 import autograd.numpy as ag
-import autograd.scipy as ags
 from autograd import grad, hessian
 
 from hybrid_vector_model.hybrid_vector_model import BaseTrafficFactorModel, \
     _non_join, create_observed_predicted_mean_error_plot, safe_delattr
 from vemomoto_core.tools.hrprint import HierarchichalPrinter
-from vemomoto_core.tools.saveobject import SeparatelySaveable, save_object,\
-    load_object
+from vemomoto_core.tools.saveobject import SeparatelySaveable, load_object
 from vemomoto_core.concurrent.concurrent_futures_ext import ProcessPoolExecutor
-from vemomoto_core.npcollections.npext import convert_R_pos, list_to_csr_matrix,\
+from vemomoto_core.npcollections.npext import convert_R_pos,\
     convert_R_0_1, convert_R_pos_reverse
 from autograd.scipy.special import gammaln
 
-from vemomoto_core.tools.simprofile import profile
 from vemomoto_core.tools.doc_utils import inherit_doc, staticmethod_inherit_doc
 from ci_rvm import find_CI_bound
 
@@ -61,23 +51,7 @@ if __name__ == '__main__':
 IDTYPE = int
 IDTYPE_A = "|S9"
 class ndarray_flex(np.ndarray):
-    """
-    def __new__(cls, shapes):
-        obj = super(ndarray_flex, cls).__new__(cls, len(shapes), object)
-        obj.__class__ = ndarray_flex
-        #ndarray_flex.__init__(obj, shapes)
-        return obj
     
-    def __init__(self, shapes):
-        self.shapes = np.asarray(shapes)
-        self.fullsize = self.shapes.prod(1).sum()
-        self.alldata = np.ndarray(self.fullsize)
-        counter = 0
-        for i, shape in enumerate(shapes):
-            size = np.prod(shape)
-            self[i] = np.reshape(self.alldata[counter:counter+size], shape)
-            counter += size
-    """    
     def pick(self, other):
         result = ndarray_flex(self.size, dtype=object)
         resultarr = result.array
@@ -104,28 +78,13 @@ class ndarray_flex(np.ndarray):
             counter += arr.size
         result.alldata = data
         return result
-    """
-    @staticmethod
-    def from_arr_list(arrs):
-        shapes = [arr.shape for arr in arrs]
-        result = ndarray_flex(shapes)
-        result.alldata[:] = np.concatenate([arr.ravel() for arr in arrs])
-        return result
-    def add2(self, other):
-        result = copy(self)
-        result += other
-        return result
-    """
+    
     def __getitem__(self, index):
         if not isinstance(index, tuple) or len(index) <= 1 or not isinstance(index[0], slice):
             return np.ndarray.__getitem__(self, index)
         rIndex = index[1:]
         result = ndarray_flex(self[index[0]].size, dtype=object)
-        #any(np.ndarray.__setitem__(result, i, a[rIndex]) 
-        #                           for i, a in enumerate(self[index[0]]))
         result.array[:] = [a[rIndex] for a in self[index[0]]]
-        #result.array[:] = np.fromiter((a[rIndex] for a in self[index[0]]), object,
-        #                              result.size)
         return result
     
     def __setitem__(self, index, val):
@@ -171,8 +130,6 @@ class ndarray_flex(np.ndarray):
             result = ndarray_flex(self.size, dtype=object)
             resultarr = result.array
         axis -= 1
-        #sum_ = lambda x: np.sum(x, axis) #x.sum(axis)
-        #resultarr[:] = np.apply_along_axis(sum_, 0, self)
         resultarr[:] = [a.sum(axis) for a in self]
         return result
     
@@ -189,8 +146,6 @@ class ndarray_flex(np.ndarray):
             resultarr = result.array
         axis -= 1
         resultarr[:] = [a.prod(axis) for a in self]
-        #any(np.ndarray.__setitem__(result, i, a.prod(axis)) for i, a 
-        #    in enumerate(self))
         return result
     
     def max(self, axis=None):
@@ -206,8 +161,6 @@ class ndarray_flex(np.ndarray):
             resultarr = result.array
         axis -= 1
         resultarr[:] = [a.max(axis) for a in self]
-        #any(np.ndarray.__setitem__(result, i, a.prod(axis)) for i, a 
-        #    in enumerate(self))
         return result
 
 def convolve_positive(a, b, minval=1e-50, axes=1):
@@ -3792,8 +3745,6 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
             df.to_csv(fileName + fname + ".csv", index=False)
             
             
-    #@staticmethod
-    #@jit()
     def _simulate_angler_trips(self, anglerOrigins, dates, timeFactors, HUCProbabilities,
                                regionProbabilities, regionToHuc, HUCProbabilitiesByRegion, 
                                xi_0, xi_R, alpha, mu_a, independentCities=False):
@@ -3857,238 +3808,5 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         pass
         
         
-def simulate_HUC_HUC_model_data():
-    independentCities = False
-    preserveAnglerIdentity = False
-    directory = "ModelInput"
-    fileNameCities = "XPT_Cities.csv"
-    fileNameHUCs = "XPT_HUC.csv"
-    fileNameAnglers = "XPT_SurveyApp.csv"
-    fileNameDistances = "Distances_HUC8_City.csv"
-    fileNameModel = "HUCHUCModel"
-    fileNameRegions = "HUC8_Regions.csv"
-    fileNameCityHUCModel = "AppCityHUCModel"
-    fileNameSimulatedData = "sim_SurveyApp"
-    if independentCities:
-        fileNameSimulatedData = fileNameSimulatedData + "IndpCity"
-    if preserveAnglerIdentity:
-        fileNameSimulatedData = fileNameSimulatedData + "Pres"
-    
-    fileNameCities = os.path.join(directory, fileNameCities)
-    fileNameHUCs = os.path.join(directory, fileNameHUCs)
-    fileNameAnglers = os.path.join(directory, fileNameAnglers)
-    fileNameDistances = os.path.join(directory, fileNameDistances)
-    fileNameRegions = os.path.join(directory, fileNameRegions)
-    fileNameSimulatedData = os.path.join(directory, fileNameSimulatedData)
-    
-    """
-    #cityHUCModel = DailyCityHUCAnglerTrafficModel(CityHUCAnglerTrafficFactorModel,
-    #                                              TimeFactorModel)
-    cityHUCModel = load_object(fileNameCityHUCModel+".amm")
-    
-    #cityHUCModel.read_city_data(fileNameCities)
-    #cityHUCModel.read_HUC_data(fileNameHUCs)
-    #cityHUCModel.read_angler_data(fileNameAnglers)
-    
-    model = HUCHUCAnglerTrafficModel(fileNameModel)
-    model.set_city_HUC_traffic_model(cityHUCModel)
-    model.read_region_data(fileNameRegions)
-    """
-    model = load_object(fileNameCityHUCModel+".amm")
-    model.prepare_survey_data()
-    parameters = np.array([-1, 0, -1, model.cityHUCTrafficModel.parameters[0], -6.06])
-    #model.cityHUCTrafficModel.timeModel.parameters = np.array([1, 0, 0, 0, -100, -100, 0, 0])
-    model.simulate_count_data(fileNameSimulatedData, parameters, #, cityHUCModel.startDate+np.arange(10))
-                              independentCities=independentCities,
-                              preserveAnglerIdentity=preserveAnglerIdentity)
-    sys.exit()
-
-def test_HUC_HUC_model():
-    directory = "ModelInput"
-    fileNameCities = "XPT_Cities.csv"
-    fileNameHUCs = "XPT_HUC.csv"
-    fileNameAnglers = "sim_SurveyAppIndpCityPres_reportedTrips.csv"
-    fileNameAnglers = "sim_SurveyAppIndpCity_reportedTrips.csv"
-    fileNameAnglers = "sim_SurveyApp_reportedTrips.csv"
-    fileNameDistances = "Distances_HUC8_City.csv"
-    fileNameRegions = "HUC8_Regions.csv"
-    fileNameModel = "TestModelIndpCityPres"
-    fileNameModel = "TestModelIndpCity"
-    fileNameModel = "TestModel" 
-    fullDataFileName = 'sim_SurveyApp_allTrips.csv'
-    
-    fileNameCities = os.path.join(directory, fileNameCities)
-    fileNameHUCs = os.path.join(directory, fileNameHUCs)
-    fileNameAnglers = os.path.join(directory, fileNameAnglers)
-    fileNameDistances = os.path.join(directory, fileNameDistances)
-    fileNameRegions = os.path.join(directory, fileNameRegions)
-    fullDataFileName = os.path.join(directory, fullDataFileName)
-    """
-    #'''
-    start, end = date_to_int("2018-05-01"), date_to_int("2020-05-01")
-    cityHUCModel = DailyCityHUCAnglerTrafficModel(CityHUCAnglerTrafficFactorModel,
-                                           TimeFactorModel, (start, end))
-    
-    cityHUCModel.read_city_data(fileNameCities)
-    cityHUCModel.read_HUC_data(fileNameHUCs)
-    cityHUCModel.read_angler_data(fileNameAnglers)
-    cityHUCModel.fit_time_model() #[[True, True]]) #, True, get_CI=False)
-    #cityHUCModel.timeModel.parameters = np.array([ 1.10067142, -0.15818775, -2.12299622, -0.80080364,  1.16739129,
-    #    1.03826495,  3.35378193, -0.64658681])
-    save_object(cityHUCModel, fileNameModel+".amm")
-    
-    cityHUCModel.read_distance_data(fileNameDistances)
-    cityHUCModel.create_traffic_factor_model()
-    cityHUCModel.fit(plotFileName=fileNameModel, refit=True) #permutations=[[True]*16])
-    save_object(cityHUCModel, fileNameModel+".amm")
-    #'''
-    #cityHUCModel = load_object(fileNameModel+".amm")
-    
-    
-    model = HUCHUCAnglerTrafficModel(fileNameModel)
-    model.set_city_HUC_traffic_model(cityHUCModel)
-    model.read_region_data(fileNameRegions)
-    model.prepare_survey_data()
-    model.save()
-    
-    """
-    model = load_object(fileNameModel+".amm")
-    '''
-    model.prepare_survey_data()
-    p = np.array([-4.67246993e-01,  5.07641832e+00,  1.03222502e+04,  5.58137382e+00, 8.16945020e-03])
-    p = np.array([-1, 0, -1, 5.55797771e+00, 0])
-    model.cityHUCTrafficModel.parameters = np.array([5.693527734158484, -10.06068869350628, 2.045373588186918, 843.2507659501429, 0.7342365396043853, -1.5785704946079078, 0.17776461375645347, -46.78866598872672, 5.585880863402117, -1.2469715446900937, -0.9540990040708566, 1.6997070268382075, -0.030011898053695567, 0.028880555824960193, 6.585588225233761, -0.5604259982730203, 0.6899407999742642])
-    model.cityHUCTrafficModel.covariates = np.array([1,1,1,1,1,1,1,0,0,1,1,1,1,0,0,1,0,1,1,1,1,1,0]).astype(bool)
-    model.parameters = p
-    #model.plot_observed_predicted('test',)# fullDataFileName=fullDataFileName)
-    #print(model.negative_log_likelihood(p))
-    def l(x):
-        pp = p.copy()
-        pp[[0, 1]] = x
-        return model.negative_log_likelihood(pp)
-    def l2(x):
-        pp = p.copy()
-        pp[4] = x
-        return model.negative_log_likelihood(pp)
-    
-    x2 = np.linspace(-10, 500, 400)
-    y2 = np.array([l2(xx) for xx in x2])
-    
-    plt.plot(x2, y2)
-    plt.show()
-    
-    x = np.linspace(-10, 10, 100)
-    y = np.linspace(-10, 10, 100)
-    X, Y = np.meshgrid(x, y)
-    Z = X.copy()
-    
-    """
-    Z = np.array([[l((xx, yy)) for j, yy in enumerate(y)]
-                  for i, xx in enumerate(x)])
-    """
-    
-    for i, xx in enumerate(x):
-        print(i)
-        for j, yy in enumerate(y):
-            Z[i,j] = l((xx, yy))
-    
-    plt.pcolormesh(X, Y, -Z)
-    plt.show()
-    #'''
-    model.plot_observed_predicted()
-    model.cityHUCTrafficModel.negative_log_likelihood(model.cityHUCTrafficModel.parameters,
-                                                      model.cityHUCTrafficModel.covariates)
-    model.prepare_survey_data()
-    
-    '''
-    model.fit(True, np.array([-1, 0, -1, -0.24094226739545493, 0]), False)
-    model.plot_observed_predicted(model.fileName)
-    p = np.array([-4.31743690e-01,  4.11409594e+05,  5.39538175e+02,  5.47565614e-01,
-       -2.40976156e-01])
-    model.negative_log_likelihood(p)
-    '''#"""
-    model.fit()
-    model.save()
-    sys.exit()
-    #'''
 
 
-def ll_inv_part(model, p, x):
-    pp = p.copy()
-    pp[:2] = x[0] * pp[:2] / pp[:2].sum()
-    pp[2] = x[1]
-    result = model.negative_log_likelihood(pp, convertParameters=False)
-    #print(pp, result)
-    return result
-
-def ll_investigation(model):
-    p = np.array([-1, 0, -1, 5.55797771e+00, 0])
-    #p = np.array(model.convert_parameters(model.parameters))
-    p = np.array((0.20972073544713915, 0.227596581560873, 0.096652553739897, 13.644303050231276, 0.002347248454878364))
-    
-    xi_0 = 1-p[:2].sum()
-    p[1] /= 1-xi_0
-    p[0] = xi_0
-    
-    #model.cityHUCTrafficModel.parameters = np.array([5.693527734158484, -10.06068869350628, 2.045373588186918, 843.2507659501429, 0.7342365396043853, -1.5785704946079078, 0.17776461375645347, -46.78866598872672, 5.585880863402117, -1.2469715446900937, -0.9540990040708566, 1.6997070268382075, -0.030011898053695567, 0.028880555824960193, 6.585588225233761, -0.5604259982730203, 0.6899407999742642])
-    #model.cityHUCTrafficModel.covariates = np.array([1,1,1,1,1,1,1,0,0,1,1,1,1,0,0,1,0,1,1,1,1,1,0]).astype(bool)
-    #model.parameters = p
-    #model.plot_observed_predicted('test',)# fullDataFileName=fullDataFileName)
-    #print(model.negative_log_likelihood(p))
-    def l(x):
-        pp = p.copy()
-        pp[:2] = x[0] * pp[:2] / pp[:2].sum()
-        pp[2] = x[1]
-        return model.negative_log_likelihood(pp, convertParameters=False)
-    def l2(x):
-        pp = p.copy()
-        pp[1] = x
-        return model.negative_log_likelihood(pp, convertParameters=False)
-    print(model.negative_log_likelihood(p, convertParameters=False))
-    #p[0] = 0.3
-    #p[2] = 0.3
-    """
-    x2 = np.linspace(0, 0.5, 200)
-    y2 = np.array([l2(xx) for xx in x2])
-    
-    plt.plot(x2, y2)
-    plt.show()
-    #"""
-    
-    x = np.linspace(1e-5, 1, 100)
-    y = np.linspace(1e-5, 1, 100)
-    x = np.linspace(0.2, 0.6, 100)
-    y = np.linspace(1e-5, 0.4, 100)
-    X, Y = np.meshgrid(x, y)
-    Z = X.copy()
-    
-    """
-    Z = np.array([[l((xx, yy)) for j, yy in enumerate(y)]
-                  for i, xx in enumerate(x)])
-    """
-    #"""
-    matplotlib.use('Qt5Agg' ,warn=False, force=True)
-    from matplotlib import pyplot as plt
-    
-    print("start")
-    with ProcessPoolExecutor(const_args=[model, p]) as pool:
-        result = pool.map(ll_inv_part, iterproduct(x, y))
-        for r, (i,j) in zip(result, iterproduct(range(x.size), range(y.size))):
-            Z[i,j] = r
-            if not j:
-                print(i)
-    """
-    for i,j in iterproduct(range(x.size), range(y.size)):
-        Z[i,j] = ll_inv_part(model, p, (x[i], y[j]))
-        if not j:
-            print(i)
-    #"""
-    Z *= -1
-    print(np.max(Z))
-    plt.pcolormesh(X, Y, Z.T) #np.maximum(Z, np.max(Z)-20))
-    plt.show()
-    
-    sys.exit()
-    
-if __name__ == '__main__':
-    pass

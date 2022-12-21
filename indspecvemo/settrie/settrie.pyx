@@ -1,13 +1,11 @@
 # distutils: language=c
 #cython: language_level=3, boundscheck=False, wraparound=False, nonecheck=False
 '''
-Created on 05.07.2016
-
-@author: Samuel
+@author: Samuel Fischer
 '''
 
 
-from datrie cimport BaseTrie, BaseState, BaseIterator
+#from datrie cimport BaseTrie, BaseState, BaseIterator
 from math import inf
 
 cdef bint has_subset_c(BaseTrie trie, BaseState trieState, str setarr, 
@@ -23,69 +21,6 @@ cdef bint has_subset_c(BaseTrie trie, BaseState trieState, str setarr,
             trieState.copy_to(trieState2)
     return False
 
-"""
-# issue: deletes also the tested item
-cdef void delete_subsets_c(BaseTrie trie, BaseState trieState, str setarr, 
-                           int index, int size, str trace):
-    cdef bint leaf = trieState.is_leaf()
-    if trieState.is_terminal():
-        trie._delitem(trace)
-        if leaf:
-            return
-        
-    cdef BaseState trieState2 = BaseState(trie)
-    cdef int i
-    trieState.copy_to(trieState2)
-    for i in range(index, size):
-        if trieState2.walk(setarr[i]):
-            delete_subsets_c(trie, trieState2, setarr, i, size, trace+setarr[i])
-            trieState.copy_to(trieState2)
-    
-# issue: childres are all descendents not only the direct descendents
-cdef bint has_superset_c(BaseTrie trie, BaseState trieState, str setarr, 
-                        int index, int size):
-    
-    if index >= size:
-        return False
-    
-    cdef BaseIterator trieIter = BaseIterator(trieState)
-    cdef str currentElem = setarr[index]
-    cdef str elem
-    cdef bint found 
-    cdef BaseState trieState2 = BaseState(trie)
-    
-    while trieIter.next():
-        elem = iter.key()[0]
-        if elem > currentElem:
-            break
-        
-        trieState.copy_to(trieState2)
-        trieState2.walk(elem)
-        
-        if elem == currentElem:
-            found = has_superset_c(trie, trieState2, setarr, 
-                                   index+1, size)
-        else:
-            found = has_superset_c(trie, trieState2, setarr, 
-                                   index, size)
-        
-        if found: 
-            return True
-    
-    return False
-    
-    cdef int i
-    
-    
-    trieState.copy_to(trieState2)
-    for i in range(index, size):
-        if trieState2.walk(setarr[i]):
-            if trieState2.is_leaf() or has_subset_c(trie, trieState2, setarr, 
-                                                    i, size): 
-                return True
-            trieState.copy_to(trieState2)
-    return True
-"""
 
 cdef class SetTrie():
     
@@ -109,20 +44,6 @@ cdef class SetTrie():
             self.trie["".join(chr(i+1) for i in sorted(s))] = 0
             if not self.touched:
                 self.touched = True
-    
-    """
-    def delete_subsets(self, superset=None):
-        cdef str elem 
-        cdef BaseState trieState = BaseState(self.trie)
-        cdef BaseIterator trieIter = BaseIterator(BaseState(self.trie))
-        if superset is None:
-            while trieIter.next():
-                elem = trieIter.key()
-                delete_subsets_c(self.trie, trieState, elem, 0, len(elem), '')
-        else:
-            elem = "".join(chr(i+1) for i in superset)
-            delete_subsets_c(self.trie, trieState, elem, 0, len(elem), '')
-    """
     
     def delete_supersets(self):
         cdef str elem 
