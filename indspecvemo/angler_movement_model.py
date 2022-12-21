@@ -1036,7 +1036,7 @@ class BaseLocalitySubbasinAnglerTrafficModel(SeparatelySaveable, HierarchichalPr
     
     STATIC_PARAMETERS_BOUNDS = []
     STATIC_PARAMETERS_LABELS = []
-    ANGLER_DATA_DTYPE = [("anglerID", IDTYPE_A), ("localityId", IDTYPE), 
+    ANGLER_DATA_DTYPE = [("anglerId", IDTYPE_A), ("localityId", IDTYPE), 
                          ("subbasinId", IDTYPE), ("date", int)]
     STATIC_PARAMETERS_SIZE = 0
     
@@ -1616,7 +1616,7 @@ class BaseLocalitySubbasinAnglerTrafficModel(SeparatelySaveable, HierarchichalPr
         
         
         if fitDataFraction < 1:
-            anglers, anglerIndices = np.unique(surveyData["anglerID"], 
+            anglers, anglerIndices = np.unique(surveyData["anglerId"], 
                                                return_inverse=True)
             fitSize = int(round(fitDataFraction*anglers.size))
             validationSize = int(round(validationDataFraction*anglers.size))
@@ -2216,7 +2216,7 @@ class DailyLocalitySubbasinAnglerTrafficModel(BaseLocalitySubbasinAnglerTrafficM
         
 class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
     
-    REGION_DATA_DTYPE = [("regionID", IDTYPE), ("subbasinId", IDTYPE)]
+    REGION_DATA_DTYPE = [("regionId", IDTYPE), ("subbasinId", IDTYPE)]
     subbasin_DISTANCE_DATA_DTYPE = [("from_subbasinId", IDTYPE), ("to_subbasinId", IDTYPE), ("distance", float)]
     
     PARAMETERS_BOUNDS = [
@@ -2283,9 +2283,9 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
                                        skip_header = True, 
                                        dtype = dtype)
         
-        regions, regionIndices = np.unique(regionData_raw["regionID"], 
+        regions, regionIndices = np.unique(regionData_raw["regionId"], 
                                            return_inverse=True) #return_counts=True)
-        regionIDToRegionIndex = {ID:i for i, ID in enumerate(regions)}
+        regionIdToRegionIndex = {ID:i for i, ID in enumerate(regions)}
         subbasinIdToSubbasinIndex = self.localitySubbasinTrafficModel.subbasinIdToSubbasinIndex
         
         
@@ -2295,21 +2295,21 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         subbasinToRegioncsr = csr_matrix((regionIndices, (subbasinIndices, 
                                                   _count_occurrence(subbasinIndices))))
         
-        self.regionIDToRegionIndex = regionIDToRegionIndex
+        self.regionIdToRegionIndex = regionIdToRegionIndex
         self.regionToSubbasin = ndarray_flex.from_csr_matrix(regionToSubbasincsr)
         self.subbasinToRegion = ndarray_flex.from_csr_matrix(subbasinToRegioncsr)
     
     def set_regions_by_radius(self, radius):
         
         self.prst("Setting preferred regions with radius ", radius)
-        regionIDToRegionIndex = self.localitySubbasinTrafficModel.subbasinIdToSubbasinIndex
+        regionIdToRegionIndex = self.localitySubbasinTrafficModel.subbasinIdToSubbasinIndex
         
         regionToSubbasin = [np.nonzero(row <= radius)[0] for row 
                        in self.subbasin_subbasin_distances]
         subbasinToRegion = [np.nonzero(col <= radius)[0] for col
                        in self.subbasin_subbasin_distances.T]
         
-        self.regionIDToRegionIndex = regionIDToRegionIndex
+        self.regionIdToRegionIndex = regionIdToRegionIndex
         self.regionToSubbasin = ndarray_flex.from_arr_list(regionToSubbasin)
         self.subbasinToRegion = ndarray_flex.from_arr_list(subbasinToRegion)
         self.regionRadius = radius
@@ -2327,8 +2327,8 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         distances = np.full((size, size), np.inf)
         np.fill_diagonal(distances, 0)
         subbasinIdToSubbasinIndex = self.localitySubbasinTrafficModel.subbasinIdToSubbasinIndex
-        for fromID, toID, dist in distanceData_raw:
-            distances[subbasinIdToSubbasinIndex[fromID], subbasinIdToSubbasinIndex[toID]] = dist
+        for fromId, toId, dist in distanceData_raw:
+            distances[subbasinIdToSubbasinIndex[fromId], subbasinIdToSubbasinIndex[toId]] = dist
         
         self.subbasin_subbasin_distances = distances
         
@@ -2398,7 +2398,7 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         surveyData = self.localitySubbasinTrafficModel.surveyData
         
         _, uniqueAnglerIndices, anglerIndices, counts = np.unique(
-                                                        surveyData["anglerID"], 
+                                                        surveyData["anglerId"], 
                                                         return_index=True,
                                                         return_counts=True,
                                                         return_inverse=True)
@@ -3424,11 +3424,11 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
             anglerData = np.genfromtxt(fullDataFileName, delimiter=",",  
                                        skip_header = True, 
                                        dtype = self.localitySubbasinTrafficModel.ANGLER_DATA_DTYPE)
-            for anglerID, _, subbasinId, _ in anglerData:
+            for anglerId, _, subbasinId, _ in anglerData:
                 destination = self.localitySubbasinTrafficModel.subbasinIdToSubbasinIndex[subbasinId]
-                if anglerID in lastDestination:
-                    result[lastDestination[anglerID], destination] += 1
-                lastDestination[anglerID] = destination
+                if anglerId in lastDestination:
+                    result[lastDestination[anglerId], destination] += 1
+                lastDestination[anglerId] = destination
                 
         return result
                 
@@ -3508,7 +3508,7 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         
         traffic = self.get_traffic_mean(parameters, dates, False, True)
                 
-        dtype = ([("pairID", int), ("fromSubbasin", IDTYPE), ("toSubbasin", IDTYPE)] 
+        dtype = ([("pairId", int), ("fromSubbasin", IDTYPE), ("toSubbasin", IDTYPE)] 
                  + [(locality, float) for locality in localityStrs])
         
         subbasinData = self.localitySubbasinTrafficModel.subbasinData
@@ -3521,7 +3521,7 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         result = np.zeros(mask.sum(), dtype=dtype)
         result["fromSubbasin"] = fromSubbasin[mask]
         result["toSubbasin"] = toSubbasin[mask]
-        result["pairID"] = np.arange(result.size)
+        result["pairId"] = np.arange(result.size)
         
         for locality, localityIndex in zip(localityStrs, localityIndices):
             if localityIndex is None:
@@ -3653,7 +3653,7 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         allTripsTransformed = np.zeros(allTrips.shape[0], 
                                dtype=self.localitySubbasinTrafficModel.ANGLER_DATA_DTYPE)
         
-        allTripsTransformed["anglerID"] = allTrips[:, 0]
+        allTripsTransformed["anglerId"] = allTrips[:, 0]
         allTripsTransformed["localityId"] = self.localitySubbasinTrafficModel.localityData["localityId"][allTrips[:, 1]]
         allTripsTransformed["subbasinId"] = self.localitySubbasinTrafficModel.subbasinData["subbasinId"][allTrips[:, 2]]
         allTripsTransformed["date"] = allTrips[:, 3]
@@ -3663,18 +3663,18 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         potentiallyReportedTrips = allTripsTransformed[isReported]
         potentiallyReportedTripsUntranformed = allTrips[isReported]
         if preserveAnglerIdentity:
-            _, ind = np.unique(self.localitySubbasinTrafficModel.surveyData['anglerID'], return_index=True)
+            _, ind = np.unique(self.localitySubbasinTrafficModel.surveyData['anglerId'], return_index=True)
             cities, counts = np.unique(self.localitySubbasinTrafficModel.surveyData[ind]['localityId'], return_counts=True)
             appUsers = []
-            _, ind2 = np.unique(allTripsTransformed['anglerID'], return_index=True)
+            _, ind2 = np.unique(allTripsTransformed['anglerId'], return_index=True)
             potentiallyIncludedAnglers = allTripsTransformed[ind2]
             for locality, count in zip(cities, counts):
                 considered_indices = np.random.choice(np.nonzero(
                     potentiallyIncludedAnglers['localityId']==locality)[0], 
                     count, replace=False)
-                appUsers.extend(potentiallyIncludedAnglers['anglerID'][considered_indices])
+                appUsers.extend(potentiallyIncludedAnglers['anglerId'][considered_indices])
             appUsers = set(appUsers)
-            isAppUser = np.array([i in appUsers for i in potentiallyReportedTrips['anglerID']])
+            isAppUser = np.array([i in appUsers for i in potentiallyReportedTrips['anglerId']])
         else:
             appUsers = set(np.random.choice(anglerOrigins.size, 
                                         int(coverage*anglerOrigins.size),
