@@ -563,7 +563,7 @@ class TimeModel(SeparatelySaveable, HierarchichalPrinter):
         return self.timeFactorModel.get_time_factor(self.parameters[2:], dates)
         
     
-class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
+class LocalitySubbasinAnglerTrafficFactorModel(BaseTrafficFactorModel):
     
     SIZE = 24
     "(`int`) -- Maximal number of parameters in the implemented model."
@@ -571,8 +571,8 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
     # If only the name of the covariate is given, the data type will be assumed
     # to be double
     ORIGIN_COVARIATES = [
-        ("cityPopulation", float),
-        ("cityAnglers", float),
+        ("localityPopulation", float),
+        ("localityAnglers", float),
         ("meanIncome", float),
         ("medianIncome", float),
         ]
@@ -585,7 +585,7 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
         ("waterPerimeter", float),
         ("waterAreaConfirmed", float),
         ("waterPerimeterConfirmed", float),
-        ("HUCPopulation", float),
+        ("subbasinPopulation", float),
         ("campgrounds", float),
         ("speciesVotes", float),
         ("pageViews", float),
@@ -636,12 +636,12 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
         "Distance exponent",               #0
         "Base distance",
         #"Angler license exponent", 
-        "City population factor", 
-        "City population exponent", 
-        "City mean income factor",         #5
-        "City mean income exponent", 
-        "City median income factor", 
-        "City median income exponent", 
+        "Locality population factor", 
+        "Locality population exponent", 
+        "Locality mean income factor",         #5
+        "Locality mean income exponent", 
+        "Locality median income factor", 
+        "Locality median income exponent", 
         "Water area factor",
         "Water area exponent",             #10
         "Water perimeter factor",
@@ -650,8 +650,8 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
         "Water area confirmed exponent", 
         "Water perimeter confirmed factor",#15
         "Water perimeter confirmed exponent",
-        "HUC population factor",
-        "HUC population exponent",
+        "Subbasin population factor",
+        "Subbasin population exponent",
         "Campground factor",             
         "Campground exponent",             #12
         "Species vote factor",
@@ -695,10 +695,10 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
     The length must match the maximal number of parameters of the 
     model (see :py:attr:`SIZE`)."""
     
-    def __init__(self, cityData, HUCData, distanceData):
+    def __init__(self, localityData, subbasinData, distanceData):
         """Constructor"""
-        self.cityData = cityData
-        self.HUCData = HUCData
+        self.localityData = localityData
+        self.subbasinData = subbasinData
         self.distanceData = distanceData
     
     def convert_parameters(self, dynamicParameters, parametersConsidered):
@@ -709,7 +709,7 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
         See `BaseTrafficFactorModel.convert_parameters`
         """
         
-        result = [np.nan]*CityHUCAnglerTrafficFactorModel.SIZE
+        result = [np.nan]*LocalitySubbasinAnglerTrafficFactorModel.SIZE
         j = 0
         for i in range(len(result)):
             if parametersConsidered[i]:
@@ -727,12 +727,12 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
                         #DEBUG=False):
         """# 
         Gravity model for a factor proportional to the traffic flow
-        between a jurisdiction and a HUC.
+        between a jurisdiction and a subbasin.
         
         See `BaseTrafficFactorModel.get_mean_factor` for further details.
         """
-        cityData = self.cityData
-        HUCData = self.HUCData
+        localityData = self.localityData
+        subbasinData = self.subbasinData
         distanceData = self.distanceData
         
         if convertParameters:
@@ -743,18 +743,18 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
         d, d0 = parameters[:i1]
         cons_d, cons_d0 = parametersConsidered[:i1]
         
-        # city parameters
+        # locality parameters
         i2 = i1 + 6
         cons_c1, cons_c2, cons_c3, cons_c4, cons_c5, cons_c6 = parametersConsidered[i1:i2]
         c1, c2, c3, c4, c5, c6 = parameters[i1:i2]
         
-        # HUC waterbody size paramters
+        # subbasin waterbody size paramters
         i1 = i2
         i2 = i1 + 8
         HS0, HS1, HS2, HS3, HS4, HS5, HS6, HS7 = parameters[i1:i2]
         cons_HS0, cons_HS1, cons_HS2, cons_HS3, cons_HS4, cons_HS5, cons_HS6, cons_HS7 = parametersConsidered[i1:i2]
         
-        # HUC tourism paramters
+        # subbasin tourism paramters
         i1 = i2
         i2 = i1 + 8
         HB0, HB1, HB2, HB3, HB4, HB5, HB6, HB7 = parameters[i1:i2]
@@ -783,7 +783,7 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
             
             sizeFactor = 1
             if cons_HS0:
-                area = HUCData["waterArea"]
+                area = subbasinData["waterArea"]
                 if cons_HS1:
                     HS1 = HS1 + 1e-100
                     if np.abs(HS1) > 5:
@@ -802,7 +802,7 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
 #                 print("B sizeFactor.sum()", sizeFactor.sum())
             
             if cons_HS2:
-                perimeter = HUCData["waterPerimeter"]
+                perimeter = subbasinData["waterPerimeter"]
                 if cons_HS3:
                     HS3 = HS3 + 1e-100
                     if np.abs(HS3) > 5:
@@ -821,7 +821,7 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
 #                 print("C sizeFactor.sum()", sizeFactor.sum())
             
             if cons_HS4:
-                area = HUCData["waterAreaConfirmed"]
+                area = subbasinData["waterAreaConfirmed"]
                 if cons_HS5:
                     HS5 = HS5 + 1e-100
                     if np.abs(HS5) > 5:
@@ -840,7 +840,7 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
 #                 print("D sizeFactor.sum()", sizeFactor.sum())
             
             if cons_HS6:
-                perimeter = HUCData["waterPerimeterConfirmed"]
+                perimeter = subbasinData["waterPerimeterConfirmed"]
                 if cons_HS7:
                     HS7 = HS7 + 1e-100
                     if np.abs(HS7) > 5:
@@ -866,13 +866,13 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
                     if np.abs(HB1) > 5:
                         if not correctDimensionMode:
                             HB0 = exp(log(HB0)/HB1)
-                        pop = power(HUCData["HUCPopulation"] * HB0, HB1)
+                        pop = power(subbasinData["subbasinPopulation"] * HB0, HB1)
                     else:
                         if correctDimensionMode:
                             HB0 = exp(log(HB0)*HB1)
-                        pop = power(HUCData["HUCPopulation"], HB1) * HB0
+                        pop = power(subbasinData["subbasinPopulation"], HB1) * HB0
                 else:
-                    pop = (HUCData["HUCPopulation"] > 0) * HB0
+                    pop = (subbasinData["subbasinPopulation"] > 0) * HB0
                 if pop.max() > 1e-30:
                     tourismFactor = tourismFactor + pop 
 #             if DEBUG:
@@ -884,13 +884,13 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
                     if np.abs(HB3) > 5:
                         if not correctDimensionMode:
                             HB2 = exp(log(HB2)/HB3)
-                        camp = power(HUCData["campgrounds"]*HB2, HB3)
+                        camp = power(subbasinData["campgrounds"]*HB2, HB3)
                     else:
                         if correctDimensionMode:
                             HB2 = exp(log(HB2)*HB3)
-                        camp = power(HUCData["campgrounds"], HB3)*HB2
+                        camp = power(subbasinData["campgrounds"], HB3)*HB2
                 else:
-                    camp = (HUCData["campgrounds"] > 0) * HB2
+                    camp = (subbasinData["campgrounds"] > 0) * HB2
                 if camp.max() > 1e-30:
                     tourismFactor = tourismFactor + camp 
 #             if DEBUG:
@@ -902,13 +902,13 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
                     if np.abs(HB5) > 5:
                         if not correctDimensionMode:
                             HB4 = exp(log(HB4)/HB5)
-                        spec = power(HUCData["speciesVotes"]*HB4, HB5)
+                        spec = power(subbasinData["speciesVotes"]*HB4, HB5)
                     else:
                         if correctDimensionMode:
                             HB4 = exp(log(HB4)*HB5)
-                        spec = power(HUCData["speciesVotes"], HB5)*HB4
+                        spec = power(subbasinData["speciesVotes"], HB5)*HB4
                 else:
-                    spec = (HUCData["speciesVotes"] > 0) * HB4
+                    spec = (subbasinData["speciesVotes"] > 0) * HB4
                 if spec.max() > 1e-30:
                     tourismFactor = tourismFactor + spec
 #             if DEBUG:
@@ -920,13 +920,13 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
                     if np.abs(HB7) > 5:
                         if not correctDimensionMode:
                             HB6 = exp(log(HB6)/HB7)
-                        www = power(HUCData["pageViews"]*HB6, HB7)
+                        www = power(subbasinData["pageViews"]*HB6, HB7)
                     else:
                         if correctDimensionMode:
                             HB6 = exp(log(HB6)*HB7)
-                        www = power(HUCData["pageViews"], HB7)*HB6
+                        www = power(subbasinData["pageViews"], HB7)*HB6
                 else:
-                    www = (HUCData["pageViews"] > 0) * HB6
+                    www = (subbasinData["pageViews"] > 0) * HB6
                 if www.max() > 1e-30:
                     tourismFactor = tourismFactor + www 
 #             if DEBUG:
@@ -945,11 +945,11 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
         if not getAnglerNumbers:
             return result
         
-        cityFactor = cityData["cityAnglers"]
+        localityFactor = localityData["localityAnglers"]
         
         anglerActiveness = 1
         if cons_c1:
-            population = cityData["cityPopulation"]
+            population = localityData["localityPopulation"]
             if cons_c2:
                 if np.abs(c2) > 5:
                     if not correctDimensionMode:
@@ -967,7 +967,7 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
 #             print("K anglerActiveness.sum()", anglerActiveness.sum())
         
         if cons_c3:
-            meanIncome = cityData["meanIncome"]
+            meanIncome = localityData["meanIncome"]
             if cons_c4:
                 if np.abs(c4) > 5:
                     if not correctDimensionMode:
@@ -985,7 +985,7 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
 #             print("L anglerActiveness.sum()", anglerActiveness.sum())
             
         if cons_c5:
-            medianIncome = cityData["medianIncome"]
+            medianIncome = localityData["medianIncome"]
             if cons_c6:
                 if np.abs(c6) > 5:
                     if not correctDimensionMode:
@@ -1002,14 +1002,14 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
 #         if DEBUG:
 #             print("M anglerActiveness.sum()", anglerActiveness.sum())
         
-        cityFactor = cityFactor * anglerActiveness
+        localityFactor = localityFactor * anglerActiveness
         
 #         if DEBUG:
-#             print("N cityFactor.sum()", cityFactor.sum())
+#             print("N localityFactor.sum()", localityFactor.sum())
         if not getProbabilities:
-            return ones(distanceData.shape[0]) * cityFactor
+            return ones(distanceData.shape[0]) * localityFactor
         else:
-            return result * cityFactor[:,None]
+            return result * localityFactor[:,None]
     
     def convert_parameters_correct_dimension(self, parameters, parametersConsidered,
                                              convertParameters=True):
@@ -1021,7 +1021,7 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
         i0 = parametersConsidered[:2].sum()
         
         result = [convert_R_pos_reverse(x) for x in parameters[:i0]]
-        for i in range(i0, CityHUCAnglerTrafficFactorModel.SIZE):
+        for i in range(i0, LocalitySubbasinAnglerTrafficFactorModel.SIZE):
             if parametersConsidered[i]:
                 x = parameters[i]
                 if not i % 2 and parametersConsidered[i+1]:
@@ -1032,20 +1032,19 @@ class CityHUCAnglerTrafficFactorModel(BaseTrafficFactorModel):
         
         return result
         
-class BaseCityHUCAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
+class BaseLocalitySubbasinAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
     
     STATIC_PARAMETERS_BOUNDS = []
     STATIC_PARAMETERS_LABELS = []
-    ANGLER_DATA_DTYPE = [("anglerID", IDTYPE_A), ("cityID", IDTYPE), 
-                         ("HUCID", IDTYPE), ("date", int)]
+    ANGLER_DATA_DTYPE = [("anglerID", IDTYPE_A), ("localityId", IDTYPE), 
+                         ("subbasinId", IDTYPE), ("date", int)]
     STATIC_PARAMETERS_SIZE = 0
     
-    def __init__(self, trafficFactorModel_class, **printerArgs): #independentAnglers=False, 
+    def __init__(self, trafficFactorModel_class, **printerArgs):
         """Constructor"""
         SeparatelySaveable.__init__(self)
         HierarchichalPrinter.__init__(self, **printerArgs)
         self._trafficFactorModel_class = trafficFactorModel_class
-#         self.independentAnglers = independentAnglers
     
     @property 
     def hasCountData(self):
@@ -1055,9 +1054,6 @@ class BaseCityHUCAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
         raise NotImplementedError()
     
     def get_nLL_functions(self, parametersConsidered, **kwargs):
-#         if self.independentAnglers:
-#             fun_ = self.negative_log_likelihood_independent
-#         else:
         fun_ = self.negative_log_likelihood
         fun = partial(fun_, parametersConsidered=parametersConsidered, **kwargs)
         jac_ = grad(fun)
@@ -1469,23 +1465,23 @@ class BaseCityHUCAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
                              responseRate=None):
         raise NotImplementedError()
     
-    def get_HUC_probabilities(self):
+    def get_subbasin_probabilities(self):
         return self.trafficFactorModel.get_mean_factor(self.parameters[self.STATIC_PARAMETERS_SIZE:],
                                                        self.covariates[self.STATIC_PARAMETERS_SIZE:],
                                                        getAnglerNumbers=False, convertParameters=True)
     
     
-    def read_city_data(self, fileNameCities):
+    def read_locality_data(self, cityDataFileName):
         """Reads and saves data that can be used to determine the repulsiveness of cities in the angler traffic model.
         
         Parameters
         ----------
-        fileNameCities : str
+        cityDataFileName : str
             Name of a csv file with (ignored) header and columns separated by 
             ``,``.             
         """
-        self.prst("Reading origin data file", fileNameCities)
-        dtype = [("cityID", IDTYPE)]
+        self.prst("Reading origin data file", cityDataFileName)
+        dtype = [("localityId", IDTYPE)]
         for nameType in self._trafficFactorModel_class.ORIGIN_COVARIATES:
             if type(nameType) is not str and hasattr(nameType, "__iter__"): 
                 if len(nameType) >= 2:
@@ -1495,29 +1491,29 @@ class BaseCityHUCAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
             else:
                 dtype.append((nameType, "double"))
         
-        cityData = np.genfromtxt(fileNameCities, delimiter=",", skip_header=True, 
+        localityData = np.genfromtxt(cityDataFileName, delimiter=",", skip_header=True, 
                                  dtype=dtype) 
-        cityData = self._trafficFactorModel_class.process_source_covariates(cityData)
-        cityData.sort(order="cityID")
-        self.cityData = cityData
-        self.cityIDToCityIndex = {ID:i for i, ID in enumerate(cityData["cityID"])}
+        localityData = self._trafficFactorModel_class.process_source_covariates(localityData)
+        localityData.sort(order="localityId")
+        self.localityData = localityData
+        self.localityIdToLocalityIndex = {ID:i for i, ID in enumerate(localityData["localityId"])}
         self._erase_survey_data()
         self._erase_distance_data()
     
     
-    def read_HUC_data(self, fileNameHUCs):
-        """Reads and saves data that can be used to determine the attractiveness of HUC regions.
+    def read_subbasin_data(self, subbasinDataFileName):
+        """Reads and saves data that can be used to determine the attractiveness of subbasins.
         
         Parameters
         ----------
-        fileNameDestinations : str
+        subbasinDataFileName : str
             Name of a csv file with (ignored) header and columns separated by 
             ``,``. 
                     
         """
-        self.prst("Reading destination data file", fileNameHUCs)
+        self.prst("Reading destination data file", subbasinDataFileName)
         
-        dtype = [("HUCID", IDTYPE), ("infested", bool)]
+        dtype = [("subbasinId", IDTYPE), ("infested", bool)]
         for nameType in self._trafficFactorModel_class.DESTINATION_COVARIATES:
             if type(nameType) is not str and hasattr(nameType, "__iter__"): 
                 if len(nameType) >= 2:
@@ -1528,51 +1524,51 @@ class BaseCityHUCAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
                 dtype.append((nameType, "double"))
                 
         
-        HUCData = np.genfromtxt(fileNameHUCs, delimiter=",", skip_header = True, 
+        subbasinData = np.genfromtxt(subbasinDataFileName, delimiter=",", skip_header = True, 
                                  dtype = dtype)
         
-        HUCData = self._trafficFactorModel_class.process_sink_covariates(HUCData)
-        HUCData.sort(order="HUCID")
+        subbasinData = self._trafficFactorModel_class.process_sink_covariates(subbasinData)
+        subbasinData.sort(order="subbasinId")
         
-        self.HUCData = HUCData
-        self.HUCIDToHUCIndex = {ID:i for i, ID in enumerate(HUCData["HUCID"])}
+        self.subbasinData = subbasinData
+        self.subbasinIdToSubbasinIndex = {ID:i for i, ID in enumerate(subbasinData["subbasinId"])}
         
         #self._erase_survey_data()
         #self._erase_distance_data()
     
-    def read_distance_data(self, fileNameDistances):
+    def read_distance_data(self, distanceDataFileName):
         """Reads and saves data that can be used to determine the repulsiveness of cities in the angler traffic model.
         
         Parameters
         ----------
-        fileNameDistances : str
+        distanceDataFileName : str
             Name of a csv file with (ignored) header and columns separated by 
             ``,``.             
         """
-        self.prst("Reading distance data file", fileNameDistances)
-        dtype = [("cityID", IDTYPE), ("HUCID", IDTYPE), ("distance", float)]
+        self.prst("Reading distance data file", distanceDataFileName)
+        dtype = [("localityId", IDTYPE), ("subbasinId", IDTYPE), ("distance", float)]
         
-        distanceData = np.genfromtxt(fileNameDistances, delimiter=",", skip_header=True, 
+        distanceData = np.genfromtxt(distanceDataFileName, delimiter=",", skip_header=True, 
                                      dtype=dtype) 
         
-        if (not hasattr(self, "cityIDToCityIndex") or 
-                not hasattr(self, "HUCIDToHUCIndex")):
-            raise ValueError("Data for cities and HUCs must be available before "
-                             "the distances between city-HUC pairs can be determined.")
+        if (not hasattr(self, "localityIdToLocalityIndex") or 
+                not hasattr(self, "subbasinIdToSubbasinIndex")):
+            raise ValueError("Data for cities and subbasins must be available before "
+                             "the distances between locality-subbasin pairs can be determined.")
         
-        if not distanceData.size==self.HUCData.size*self.cityData.size:
-            raise ValueError("The number of city-HUC pairs must match the "
-                             "product of the city count and the HUC region "
+        if not distanceData.size==self.subbasinData.size*self.localityData.size:
+            raise ValueError("The number of locality-subbasin pairs must match the "
+                             "product of the locality count and the subbasin "
                              "count.")
             
-        distances = np.zeros((self.cityData.size, self.HUCData.size))
+        distances = np.zeros((self.localityData.size, self.subbasinData.size))
         
         try:
             for i, j, dist in distanceData:
-                distances[self.cityIDToCityIndex[i], self.HUCIDToHUCIndex[j]] = dist
+                distances[self.localityIdToLocalityIndex[i], self.subbasinIdToSubbasinIndex[j]] = dist
         except KeyError:
-            raise ValueError(("The city ID {} or the HUC {} were not contained "
-                              "in the city or HUC data set.".format(i, j)))
+            raise ValueError(("The locality ID {} or the subbasin {} were not contained "
+                              "in the locality or subbasin data set.".format(i, j)))
         
         self.distanceData = distances
         
@@ -1584,24 +1580,32 @@ class BaseCityHUCAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
             pass
         
     
-    def read_angler_data(self, fileNameAnglers, fitDataFraction=1, 
+    def read_angler_data(self, anglerDataFileName, fitDataFraction=1, 
                          validationDataFraction=None, seed=1):
         """Reads the survey observation data.
         
         Parameters
         ----------
-        fileNameSurvey : str 
+        anglerDataFileName : str 
             Name of a csv file containing the road network. The file must be a 
             have a header (will be ignored) and columns separated by ``,``.
+        fitDataFraction : float
+            Fraction of the data that shall be used for model fitting
+        validationDataFraction : float
+            Fraction of the data that shall be used for model validation.
+            If `None`, it is computed as `1-fitDataFraction`
+        seed : int
+            Seed of the random generator used when splitting the data
+            into fitting and validation data
         
         """
         
-        self.prst("Reading angler data", fileNameAnglers)
+        self.prst("Reading angler data", anglerDataFileName)
         self._erase_model_fit()
         
         dtype = self.ANGLER_DATA_DTYPE
         
-        surveyData = np.genfromtxt(fileNameAnglers, delimiter=",",  
+        surveyData = np.genfromtxt(anglerDataFileName, delimiter=",",  
                                    skip_header = True, 
                                    dtype = dtype)
         
@@ -1638,7 +1642,7 @@ class BaseCityHUCAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
         self.surveyData = surveyData
     
     def add_place_indices(self):
-        if "cityIndex" in self.surveyData.dtype.names:
+        if "localityIndex" in self.surveyData.dtype.names:
             return
         
         result = []
@@ -1646,12 +1650,12 @@ class BaseCityHUCAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
             if data is None:
                 result.append(None)
                 continue
-            cityIndices = [self.cityIDToCityIndex[i] for i in data["cityID"]]
-            HUCIndices = [self.HUCIDToHUCIndex[i] for i in data["HUCID"]]
+            localityIndices = [self.localityIdToLocalityIndex[i] for i in data["localityId"]]
+            subbasinIndices = [self.subbasinIdToSubbasinIndex[i] for i in data["subbasinId"]]
             
             result.append(recfunctions.append_fields(data, 
-                                                     ["cityIndex", "HUCIndex"], 
-                                                     [cityIndices, HUCIndices], 
+                                                     ["localityIndex", "subbasinIndex"], 
+                                                     [localityIndices, subbasinIndices], 
                                                      [int, int], usemask=False))
                                 
         self.surveyData, self.validationData = result
@@ -1674,8 +1678,8 @@ class BaseCityHUCAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
                 pass
             trafficFactorModel_class._check_integrity()
             self._trafficFactorModel_class = trafficFactorModel_class
-        safe_delattr(self, "cityData")
-        safe_delattr(self, "HUCData")
+        safe_delattr(self, "localityData")
+        safe_delattr(self, "subbasinData")
         self._erase_traffic_factor_model()
     
     def create_traffic_factor_model(self):
@@ -1686,8 +1690,8 @@ class BaseCityHUCAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
                              "must be specified "
                              "and the count data must be computed.")
         
-        self.trafficFactorModel = self._trafficFactorModel_class(self.cityData,
-                                                                 self.HUCData,
+        self.trafficFactorModel = self._trafficFactorModel_class(self.localityData,
+                                                                 self.subbasinData,
                                                                  self.distanceData)
         
         self._erase_model_fit()
@@ -1765,8 +1769,8 @@ class BaseCityHUCAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
                                                   )
         create_observed_predicted_mean_error_plot(predicted.sum(0), 
                                                   observed.sum(0), 
-                                                  saveFileName=_non_join(saveFileName, "_HUCs"),
-                                                  comparisonFileName=_non_join(comparisonFileName, "_HUCs"),
+                                                  saveFileName=_non_join(saveFileName, "_subbasins"),
+                                                  comparisonFileName=_non_join(comparisonFileName, "_subbasins"),
                                                   comparisonPredicted = comparisonPredictedS0,
                                                   comparisonObserved = comparisonObservedS0,
                                                   )
@@ -1787,27 +1791,27 @@ class BaseCityHUCAnglerTrafficModel(SeparatelySaveable, HierarchichalPrinter):
                                                   comparisonObserved = comparisonObserved,
                                                   )
     
-    def save_HUC_predictions(self, fileName):
+    def save_subbasin_predictions(self, fileName):
         
-        dtype = [("HUCID", IDTYPE), ("predicted", float), ("observed", float),
+        dtype = [("subbasinId", IDTYPE), ("predicted", float), ("observed", float),
                  ("residual", float)]
         
-        result = np.zeros_like(self.HUCData, dtype=dtype)
+        result = np.zeros_like(self.subbasinData, dtype=dtype)
         
-        result["HUCID"] = self.HUCData["HUCID"]
+        result["subbasinId"] = self.subbasinData["subbasinId"]
         
         result["predicted"] = self.get_traffic_mean().sum(0)
         result["observed"] = self.get_traffic_observations().sum(0)
         result["residual"] = result["predicted"]-result["observed"]
         
         df = pd.DataFrame(result)
-        df.to_csv(fileName + "_HUC.csv", index=False)
+        df.to_csv(fileName + "_subbasin.csv", index=False)
         
         
         
     
     
-class YearlyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
+class YearlyLocalitySubbasinAnglerTrafficModel(BaseLocalitySubbasinAnglerTrafficModel):
     
     STATIC_PARAMETERS_BOUNDS = [
         (-10, 10),
@@ -1833,8 +1837,8 @@ class YearlyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
         
         alpha, c = parameters[:2]
         counts = self.pairCountData["count"]
-        cities = self.pairCountData["cityIndex"]
-        HUCs = self.pairCountData["HUCIndex"]
+        cities = self.pairCountData["localityIndex"]
+        subbasins = self.pairCountData["subbasinIndex"]
         dataN = counts.size
         r = 1/alpha
         
@@ -1848,8 +1852,8 @@ class YearlyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
         
         return (-npsum(gammaln(counts+r)) + dataN*gammaln(r) #+npsum(gammaln(counts+1)) 
                 + r*npsum(log_q_denominator) - counts.sum()*log(c)
-                - npsum(counts*log(meanFactor[cities, HUCs])) 
-                + npsum(counts*log_q_denominator[cities, HUCs])
+                - npsum(counts*log(meanFactor[cities, subbasins])) 
+                + npsum(counts*log_q_denominator[cities, subbasins])
                 ) 
         
     def get_r_q(self, parameters=None, parametersConsidered=None, 
@@ -1878,11 +1882,11 @@ class YearlyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
     def get_traffic_observations(self):
         observed = np.zeros_like(self.distanceData)
         
-        cities = self.pairCountData["cityIndex"]
-        HUCs = self.pairCountData["HUCIndex"]
+        cities = self.pairCountData["localityIndex"]
+        subbasins = self.pairCountData["subbasinIndex"]
         counts = self.pairCountData["count"]
         
-        observed[cities, HUCs] = counts
+        observed[cities, subbasins] = counts
         
         return observed
     
@@ -1895,23 +1899,23 @@ class YearlyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
             return nbinom.ppf(p[:, None], r, q)
         return nbinom.ppf(p, r, q)
     
-    def read_angler_data(self, fileNameAnglers):
-        BaseCityHUCAnglerTrafficModel.read_angler_data(self, fileNameAnglers)
+    def read_angler_data(self, anglerDataFileName):
+        BaseLocalitySubbasinAnglerTrafficModel.read_angler_data(self, anglerDataFileName)
         self.set_pair_count_data()
     
     def set_pair_count_data(self):
-        """Converts raw survey data in count data by city-HUC pair.
+        """Converts raw survey data in count data by locality-subbasin pair.
         
         """
         
-        if (not hasattr(self, "cityIDToCityIndex") or 
-                not hasattr(self, "HUCIDToHUCIndex")):
-            raise ValueError("Data for cities and HUCs must be available before "
-                             "the count data per city-HUC pair can be determined")
+        if (not hasattr(self, "localityIdToLocalityIndex") or 
+                not hasattr(self, "subbasinIdToSubbasinIndex")):
+            raise ValueError("Data for cities and subbasins must be available before "
+                             "the count data per locality-subbasin pair can be determined")
         
         self.add_place_indices()
         
-        pairs, count = np.unique(self.surveyData[["cityIndex", "HUCIndex"]], 
+        pairs, count = np.unique(self.surveyData[["localityIndex", "subbasinIndex"]], 
                                  return_counts=True)
         
         pairCountData = recfunctions.append_fields(pairs, ["count"], [count], 
@@ -1926,7 +1930,7 @@ class YearlyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
         except (ValueError, AttributeError):
             pass
 
-class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
+class DailyLocalitySubbasinAnglerTrafficModel(BaseLocalitySubbasinAnglerTrafficModel):
     
     STATIC_PARAMETERS_BOUNDS = [
         (-5, 30),
@@ -1943,8 +1947,8 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
         return hasattr(self, "pairDayCountData")
     
     def __init__(self, trafficFactorModel_class, timeFactorModel_class, timeInterval=(None, None), 
-                 **printerArgs): #independentAnglers=False,
-        BaseCityHUCAnglerTrafficModel.__init__(self, trafficFactorModel_class, **printerArgs) #independentAnglers, 
+                 **printerArgs):
+        BaseLocalitySubbasinAnglerTrafficModel.__init__(self, trafficFactorModel_class, **printerArgs)
         self.startDate, self.endDate = timeInterval
         self._timeFactorModel_class = timeFactorModel_class
     
@@ -1952,23 +1956,23 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
     def _convert_static_parameters(self, parameters):
         return [convert_R_pos(parameters[0]), convert_R_pos(parameters[1])]
     
-    def read_angler_data(self, fileNameAnglers, fitDataFraction=1, 
+    def read_angler_data(self, anglerDataFileName, fitDataFraction=1, 
                          validationDataFraction=None):
-        BaseCityHUCAnglerTrafficModel.read_angler_data(self, fileNameAnglers,
+        BaseLocalitySubbasinAnglerTrafficModel.read_angler_data(self, anglerDataFileName,
                                                        fitDataFraction,
                                                        validationDataFraction)
         self.set_pair_day_count_data()
         self.dayCount = self.endDate - self.startDate
     
     def set_pair_day_count_data(self):
-        """Converts raw survey data in count data by city-HUC pair.
+        """Converts raw survey data in count data by locality-subbasin pair.
         
         """
         
-        if (not hasattr(self, "cityIDToCityIndex") or 
-                not hasattr(self, "HUCIDToHUCIndex")):
-            raise ValueError("Data for cities and HUCs must be available before "
-                             "the count data per city-HUC pair can be determined")
+        if (not hasattr(self, "localityIdToLocalityIndex") or 
+                not hasattr(self, "subbasinIdToSubbasinIndex")):
+            raise ValueError("Data for cities and subbasins must be available before "
+                             "the count data per locality-subbasin pair can be determined")
         
         self.add_place_indices()
         tmp = []
@@ -1977,16 +1981,16 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
                 tmp.append(None)
                 continue
             
-            pairDays, count = np.unique(data[["cityIndex", "HUCIndex", "date"]], 
+            pairDays, count = np.unique(data[["localityIndex", "subbasinIndex", "date"]], 
                                                          return_counts=True)
             
-            pairDayCountData = np.zeros(pairDays.shape[0], dtype=[("cityIndex", int), 
-                                                                  ("HUCIndex", int),
+            pairDayCountData = np.zeros(pairDays.shape[0], dtype=[("localityIndex", int), 
+                                                                  ("subbasinIndex", int),
                                                                   ("date", int),
                                                                   ("timeFactor", float),
                                                                   ("count", int)])
-            pairDayCountData["cityIndex"] = pairDays["cityIndex"]
-            pairDayCountData["HUCIndex"] = pairDays["HUCIndex"]
+            pairDayCountData["localityIndex"] = pairDays["localityIndex"]
+            pairDayCountData["subbasinIndex"] = pairDays["subbasinIndex"]
             pairDayCountData["date"] = pairDays["date"]
             pairDayCountData["count"] = count
             
@@ -2056,8 +2060,8 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
         
         alpha, c = parameters[:2]
         counts = self.pairDayCountData["count"]
-        cities = self.pairDayCountData["cityIndex"]
-        HUCs = self.pairDayCountData["HUCIndex"]
+        cities = self.pairDayCountData["localityIndex"]
+        subbasins = self.pairDayCountData["subbasinIndex"]
         timeFactors = self.pairDayCountData["timeFactor"]
         r = 1/alpha
         if r > 1e10:
@@ -2077,8 +2081,8 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
             print("3 meanFactor.sum()", meanFactor.sum())
             print("4 -npsum(gammaln(counts+rt)) + npsum(gammaln(rt))", -npsum(gammaln(counts+rt)) + npsum(gammaln(rt)))
             print("5 r*self.dayCount*npsum(log_q_denominator) - counts.sum()*log(c)", r*self.dayCount*npsum(log_q_denominator) - counts.sum()*log(c))
-            print("6 - npsum(counts*log(meanFactor[cities, HUCs]))", - npsum(counts*log(meanFactor[cities, HUCs])))
-            print("7 npsum(counts*log_q_denominator[cities, HUCs])", npsum(counts*log_q_denominator[cities, HUCs]))
+            print("6 - npsum(counts*log(meanFactor[cities, subbasins]))", - npsum(counts*log(meanFactor[cities, subbasins])))
+            print("7 npsum(counts*log_q_denominator[cities, subbasins])", npsum(counts*log_q_denominator[cities, subbasins]))
 #         if type(meanFactor) == np.ndarray:
 #             print(meanFactor.sum())
 #             print(npsum(rt))
@@ -2087,8 +2091,8 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
         
         result = (-npsum(gammaln(counts+rt)) + npsum(gammaln(rt)) # +npsum(gammaln(counts+1)) 
                 + r*self.dayCount*npsum(log_q_denominator) - counts.sum()*log(c)
-                - npsum(counts*log(meanFactor[cities, HUCs])) 
-                + npsum(counts*log_q_denominator[cities, HUCs])
+                - npsum(counts*log(meanFactor[cities, subbasins])) 
+                + npsum(counts*log_q_denominator[cities, subbasins])
                 ) 
         if type(result) == np.float64 and np.isnan(result):
             #print("!NAN_all", parametersConsidered+0, list(parameters))
@@ -2111,10 +2115,10 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
         
         alpha, c = parameters[:2]
         counts = self.pairDayCountData["count"]
-        cities = self.pairDayCountData["cityIndex"]
-        HUCs = self.pairDayCountData["HUCIndex"]
+        cities = self.pairDayCountData["localityIndex"]
+        subbasins = self.pairDayCountData["subbasinIndex"]
         timeFactors = self.pairDayCountData["timeFactor"]
-        anglerNumbers = self.cityData["cityAnglers"]
+        anglerNumbers = self.localityData["localityAnglers"]
         r = 1/alpha
         if r > 1e10:
             r = 1e10
@@ -2136,8 +2140,8 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
         
         return (-npsum(gammaln(counts+rti)) + npsum(gammaln(rti)) #*dataN #+npsum(gammaln(counts+1)) 
                 + r*self.dayCount*npsum(meanFactor*npsum(log_q_denominator, 1)) - counts.sum()*log(c)
-                - npsum(counts*log(probabilities[cities, HUCs])) 
-                + npsum(counts*log_q_denominator[cities, HUCs])
+                - npsum(counts*log(probabilities[cities, subbasins])) 
+                + npsum(counts*log_q_denominator[cities, subbasins])
                 ) 
         
     def get_r_q(self, parameters=None, parametersConsidered=None, dates=None):
@@ -2146,11 +2150,6 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
             parametersConsidered = self.covariates
         
         parameters = self.convert_parameters(parameters, parametersConsidered)
-#         if self.independentAnglers:
-#             qFactor = self.trafficFactorModel.get_mean_factor(parameters[self.STATIC_PARAMETERS_SIZE:], 
-#                                                          parametersConsidered[self.STATIC_PARAMETERS_SIZE:],
-#                                                          getAnglerNumbers=False)
-#         else:
         qFactor = self.trafficFactorModel.get_mean_factor(parameters[self.STATIC_PARAMETERS_SIZE:], 
                                                      parametersConsidered[self.STATIC_PARAMETERS_SIZE:])
             
@@ -2162,15 +2161,6 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
         else:
             timeFactor = self.dayCount
         r = timeFactor/parameters[0]
-        
-#         if self.independentAnglers:
-#             anglerNumbers = self.cityData["cityAnglers"]
-#             meanFactor = self.trafficFactorModel.get_mean_factor(parameters[self.STATIC_PARAMETERS_SIZE:], 
-#                                                          parametersConsidered[self.STATIC_PARAMETERS_SIZE:],
-#                                                          getProbabilities=False)
-#             meanFactor = meanFactor/(meanFactor/anglerNumbers).mean()
-#             r *= meanFactor
-#             r = r[:,None]
         
         return r, q
         
@@ -2186,11 +2176,11 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
             data = self.pairDayValidationData
         else:
             data = self.pairDayCountData
-        cities = data["cityIndex"]
-        HUCs = data["HUCIndex"]
+        cities = data["localityIndex"]
+        subbasins = data["subbasinIndex"]
         counts = data["count"]
         
-        np.add.at(observed,(cities, HUCs),counts)
+        np.add.at(observed,(cities, subbasins),counts)
         
         return observed
     
@@ -2199,8 +2189,6 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
         r, q = self.get_r_q(parameters, parametersConsidered)
         
         if type(p) == np.ndarray:
-#             if self.independentAnglers:
-#                 r = np.tile(r.ravel(), q.shape[1])
             q = q.ravel()
             return nbinom.ppf(p[:, None], r, q)
         return nbinom.ppf(p, r, q)
@@ -2217,24 +2205,19 @@ class DailyCityHUCAnglerTrafficModel(BaseCityHUCAnglerTrafficModel):
                                                        ) 
         
         
-        anglerNumbers = self.cityData["cityAnglers"]
-#         if self.independentAnglers:
-#             tripRateFactor /= (tripRateFactor/anglerNumbers).mean()
+        anglerNumbers = self.localityData["localityAnglers"]
         
         tripRateFactor /= anglerNumbers
         
-#         if self.independentAnglers:
-#             return tripRateFactor, parameters[1]/parameters[0]
-#         else:
         return tripRateFactor * (parameters[1]/parameters[0])
        
     
         
         
-class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
+class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
     
-    REGION_DATA_DTYPE = [("regionID", IDTYPE), ("HUCID", IDTYPE)]
-    HUC_DISTANCE_DATA_DTYPE = [("from_HUCID", IDTYPE), ("to_HUCID", IDTYPE), ("distance", float)]
+    REGION_DATA_DTYPE = [("regionID", IDTYPE), ("subbasinId", IDTYPE)]
+    subbasin_DISTANCE_DATA_DTYPE = [("from_subbasinId", IDTYPE), ("to_subbasinId", IDTYPE), ("distance", float)]
     
     PARAMETERS_BOUNDS = [
         (-20, 20),
@@ -2259,8 +2242,8 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         self.truncationNo = 200
         self.fileName = fileName
     
-    def set_city_HUC_traffic_model(self, cityHUCTrafficModel):
-        self.cityHUCTrafficModel = cityHUCTrafficModel
+    def set_locality_subbasin_traffic_model(self, localitySubbasinTrafficModel):
+        self.localitySubbasinTrafficModel = localitySubbasinTrafficModel
         self._erase_model_fit()
     
     def save(self, fileName=None):
@@ -2289,73 +2272,65 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
     def isFitted(self):
         return hasattr(self, "parameters")
     
-    def read_region_data(self, fileNameRegions):
-        """Reads the survey observation data.
+    def read_region_data(self, regionDataFileName):
         
-        Parameters
-        ----------
-        fileNameSurvey : str 
-            Name of a csv file containing the road network. The file must be a 
-            have a header (will be ignored) and columns separated by ``,``.
-        
-        """
-        self.prst("Reading region data", fileNameRegions)
+        self.prst("Reading region data", regionDataFileName)
         self._erase_model_fit()
         
         dtype = self.REGION_DATA_DTYPE
         
-        regionData_raw = np.genfromtxt(fileNameRegions, delimiter=",",  
+        regionData_raw = np.genfromtxt(regionDataFileName, delimiter=",",  
                                        skip_header = True, 
                                        dtype = dtype)
         
         regions, regionIndices = np.unique(regionData_raw["regionID"], 
                                            return_inverse=True) #return_counts=True)
         regionIDToRegionIndex = {ID:i for i, ID in enumerate(regions)}
-        HUCIDToHUCIndex = self.cityHUCTrafficModel.HUCIDToHUCIndex
+        subbasinIdToSubbasinIndex = self.localitySubbasinTrafficModel.subbasinIdToSubbasinIndex
         
         
-        HUCIndices = [HUCIDToHUCIndex[i] for i in regionData_raw["HUCID"]]
-        regionToHUCcsr = csr_matrix((HUCIndices, (regionIndices, 
+        subbasinIndices = [subbasinIdToSubbasinIndex[i] for i in regionData_raw["subbasinId"]]
+        regionToSubbasincsr = csr_matrix((subbasinIndices, (regionIndices, 
                                                _count_occurrence(regionIndices))))
-        HUCToRegioncsr = csr_matrix((regionIndices, (HUCIndices, 
-                                                  _count_occurrence(HUCIndices))))
+        subbasinToRegioncsr = csr_matrix((regionIndices, (subbasinIndices, 
+                                                  _count_occurrence(subbasinIndices))))
         
         self.regionIDToRegionIndex = regionIDToRegionIndex
-        self.regionToHUC = ndarray_flex.from_csr_matrix(regionToHUCcsr)
-        self.HUCToRegion = ndarray_flex.from_csr_matrix(HUCToRegioncsr)
+        self.regionToSubbasin = ndarray_flex.from_csr_matrix(regionToSubbasincsr)
+        self.subbasinToRegion = ndarray_flex.from_csr_matrix(subbasinToRegioncsr)
     
     def set_regions_by_radius(self, radius):
         
         self.prst("Setting preferred regions with radius ", radius)
-        regionIDToRegionIndex = self.cityHUCTrafficModel.HUCIDToHUCIndex
+        regionIDToRegionIndex = self.localitySubbasinTrafficModel.subbasinIdToSubbasinIndex
         
-        regionToHUC = [np.nonzero(row <= radius)[0] for row 
-                       in self.HUC_HUC_distances]
-        HUCToRegion = [np.nonzero(col <= radius)[0] for col
-                       in self.HUC_HUC_distances.T]
+        regionToSubbasin = [np.nonzero(row <= radius)[0] for row 
+                       in self.subbasin_subbasin_distances]
+        subbasinToRegion = [np.nonzero(col <= radius)[0] for col
+                       in self.subbasin_subbasin_distances.T]
         
         self.regionIDToRegionIndex = regionIDToRegionIndex
-        self.regionToHUC = ndarray_flex.from_arr_list(regionToHUC)
-        self.HUCToRegion = ndarray_flex.from_arr_list(HUCToRegion)
+        self.regionToSubbasin = ndarray_flex.from_arr_list(regionToSubbasin)
+        self.subbasinToRegion = ndarray_flex.from_arr_list(subbasinToRegion)
         self.regionRadius = radius
         
-    def read_HUC_distances(self, fileNameHUCDistances):
+    def read_subbasin_distances(self, subbasinDistancesFileName):
         
-        self.prst("Reading HUC distance data", fileNameHUCDistances)
+        self.prst("Reading subbasin distance data", subbasinDistancesFileName)
         
-        dtype = self.HUC_DISTANCE_DATA_DTYPE
+        dtype = self.subbasin_DISTANCE_DATA_DTYPE
         
-        distanceData_raw = np.genfromtxt(fileNameHUCDistances, delimiter=",",  
+        distanceData_raw = np.genfromtxt(subbasinDistancesFileName, delimiter=",",  
                                          skip_header = True, 
                                          dtype = dtype)
-        size = self.cityHUCTrafficModel.HUCData.size
+        size = self.localitySubbasinTrafficModel.subbasinData.size
         distances = np.full((size, size), np.inf)
         np.fill_diagonal(distances, 0)
-        HUCIDToHUCIndex = self.cityHUCTrafficModel.HUCIDToHUCIndex
+        subbasinIdToSubbasinIndex = self.localitySubbasinTrafficModel.subbasinIdToSubbasinIndex
         for fromID, toID, dist in distanceData_raw:
-            distances[HUCIDToHUCIndex[fromID], HUCIDToHUCIndex[toID]] = dist
+            distances[subbasinIdToSubbasinIndex[fromID], subbasinIdToSubbasinIndex[toID]] = dist
         
-        self.HUC_HUC_distances = distances
+        self.subbasin_subbasin_distances = distances
         
     
     def _set_local_traffic_scale_and_fit(self, distance):
@@ -2416,14 +2391,11 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
  
     def prepare_survey_data(self):
         
-        self.cityHUCTrafficModel.surveyData.sort(order=["date"])
+        self.localitySubbasinTrafficModel.surveyData.sort(order=["date"])
         self._erase_model_fit()
+        self.localitySubbasinTrafficModel.add_place_indices()
         
-#         independentAnglers = self.cityHUCTrafficModel.independentAnglers
-        
-        self.cityHUCTrafficModel.add_place_indices()
-        
-        surveyData = self.cityHUCTrafficModel.surveyData
+        surveyData = self.localitySubbasinTrafficModel.surveyData
         
         _, uniqueAnglerIndices, anglerIndices, counts = np.unique(
                                                         surveyData["anglerID"], 
@@ -2438,16 +2410,16 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         angler_tripIndices_csr = csr_matrix((np.arange(surveyData.size), 
                                              (anglerIndices, indptr)))
         
-        self.angler_origins = surveyData["cityIndex"][uniqueAnglerIndices]
-        self.angler_destinations = ndarray_flex.from_csr_matrix(csr_matrix((surveyData["HUCIndex"], 
+        self.angler_origins = surveyData["localityIndex"][uniqueAnglerIndices]
+        self.angler_destinations = ndarray_flex.from_csr_matrix(csr_matrix((surveyData["subbasinIndex"], 
                                                    (anglerIndices, indptr))))
         
         timeSurveyData = surveyData["date"]
-        timeModel = self.cityHUCTrafficModel.timeModel
-        startDate = self.cityHUCTrafficModel.startDate
+        timeModel = self.localitySubbasinTrafficModel.timeModel
+        startDate = self.localitySubbasinTrafficModel.startDate
         shiftedDates = surveyData["date"] - startDate
         date_timeFactors = timeModel.get_time_factor(np.arange(startDate, 
-                                                               self.cityHUCTrafficModel.endDate))
+                                                               self.localitySubbasinTrafficModel.endDate))
         
         Y_mult1 = defaultdict(list)
         Y_mult2 = defaultdict(list)
@@ -2463,17 +2435,14 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         indices = []
         tripIndices = []
         dayTripCounts = []
-#         if independentAnglers:
-#             dispersionMultiplier, anglerRateFactor = self.cityHUCTrafficModel.get_trip_rate_factor()
-#             self.anglerRateFactor = anglerRateFactor
-#         else:
-        anglerRateFactor = self.cityHUCTrafficModel.get_trip_rate_factor()
+        
+        anglerRateFactor = self.localitySubbasinTrafficModel.get_trip_rate_factor()
         self.anglerRateFactor = anglerRateFactor[self.angler_origins]
-        self.city_anglerRateFactor = anglerRateFactor
+        self.locality_anglerRateFactor = anglerRateFactor
         
-        self.city_unobservedAnglers = self.cityHUCTrafficModel.cityData["cityAnglers"]
+        self.locality_unobservedAnglers = self.localitySubbasinTrafficModel.localityData["localityAnglers"]
         
-        np.add.at(self.city_unobservedAnglers, self.angler_origins, -1)
+        np.add.at(self.locality_unobservedAnglers, self.angler_origins, -1)
         
         for i, row in enumerate(angler_tripIndices_csr):
             tmpIndices, inv, counts = np.unique(timeSurveyData[row.data], return_index=True,
@@ -2491,39 +2460,32 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
             shiftedDatesRow = shiftedDates[row.data]
             
             dayFactors = date_timeFactors[shiftedDatesRow]
-#             if independentAnglers:
-#                 cityDayFactor = dispersionMultiplier[self.angler_origins[i]]
-#                 dayFactors *= cityDayFactor
-#                 cityFactor = anglerRateFactor
-#             else:
-            cityFactor = anglerRateFactor[self.angler_origins[i]]
+            localityFactor = anglerRateFactor[self.angler_origins[i]]
             
-            dayCityKey = (dayFactors[0], cityFactor, dayCounts[0])
-            Y_factors[dayCityKey] = 0
-            L_factors[dayCityKey] = 0
+            dayLocalityKey = (dayFactors[0], localityFactor, dayCounts[0])
+            Y_factors[dayLocalityKey] = 0
+            L_factors[dayLocalityKey] = 0
             
                 
             previousDay = shiftedDatesRow[0]
             for j, (day, dayCount, dayFactor) in enumerate(zip(shiftedDatesRow[1:], dayCounts[1:], dayFactors[1:]), 1):
-                previousDayCityKey = dayCityKey
-                previousDayFactor, _, previousDayCount = dayCityKey
-                dayCityKey = (dayFactor, cityFactor, dayCount)
+                previousDayLocalityKey = dayLocalityKey
+                previousDayFactor, _, previousDayCount = dayLocalityKey
+                dayLocalityKey = (dayFactor, localityFactor, dayCount)
                 if day == previousDay:
-                    Y_mult1[dayFactor, dayCount, dayCityKey].append((i, j))
-                    L_convolve1[dayCityKey].append((i, j))
+                    Y_mult1[dayFactor, dayCount, dayLocalityKey].append((i, j))
+                    L_convolve1[dayLocalityKey].append((i, j))
                 else:
                     betweenDateFactor = np.sum(date_timeFactors[previousDay+1:day])
-#                     if independentAnglers:
-#                         betweenDateFactor *= cityDayFactor
-                    Y_factors[dayCityKey] = 0
+                    Y_factors[dayLocalityKey] = 0
                     Y_mult2[dayFactor+previousDayFactor+betweenDateFactor, 
-                            dayCount+previousDayCount, previousDayCityKey, dayCityKey].append((i, j))
-                    L_factors[dayCityKey] = 0
+                            dayCount+previousDayCount, previousDayLocalityKey, dayLocalityKey].append((i, j))
+                    L_factors[dayLocalityKey] = 0
                     if day - previousDay == 1:
-                        L_convolve2[previousDayCityKey, dayCityKey].append((i, j))
+                        L_convolve2[previousDayLocalityKey, dayLocalityKey].append((i, j))
                     else:
-                        L_factors[betweenDateFactor, cityFactor] = 0
-                        L_convolve3[previousDayCityKey, dayCityKey, betweenDateFactor].append((i, j))
+                        L_factors[betweenDateFactor, localityFactor] = 0
+                        L_convolve3[previousDayLocalityKey, dayLocalityKey, betweenDateFactor].append((i, j))
                 previousDay = day
         
         Y_factorsFrac = list(k for k in Y_factors.keys() if k[2]==1)
@@ -2547,14 +2509,14 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         self.Y_mult1 = np.array([(dayFactor, dayKey[1], dayCount, Y_factors[dayKey]) for 
                                  dayFactor, dayCount, dayKey in Y_mult1],
                                  dtype=[("timeFactor", float),
-                                        ("cityFactor", float),
+                                        ("localityFactor", float),
                                         ("tripCount", int),
                                         ("YFactorIndex", int)])
         self.Y_mult2 = np.array([(dayFactor, dayKey[1], dayCount, Y_factors[previousDayKey], Y_factors[dayKey])
                                  for dayFactor, dayCount, previousDayKey, dayKey 
                                  in Y_mult2],
                                  dtype=[("timeFactor", float),
-                                        ("cityFactor", float),
+                                        ("localityFactor", float),
                                         ("tripCount", int),
                                         ("YFactorIndex1", int),
                                         ("YFactorIndex2", int)])
@@ -2581,50 +2543,48 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         self.Y_factorsFrac = np.array(Y_factorsFrac)[:, 0]
         self.Y_factorsBinom = np.array(Y_factorsBinom, 
                                        dtype=[("timeFactor", float),
-                                              ("cityFactor", float),
+                                              ("localityFactor", float),
                                               ("tripCount", int)])
         self.L_factorsBinom = np.array(L_factorsBinom,
                                        dtype=[("timeFactor", float),
-                                              ("cityFactor", float)])
+                                              ("localityFactor", float)])
         self.L_factorsHypergeom = np.array(L_factorsHypergeom, 
                                            dtype=[("timeFactor", float),
-                                                  ("cityFactor", float),
+                                                  ("localityFactor", float),
                                                   ("tripCount", int)])
         
         self.angler_dayFactor = csr_matrix((
             date_timeFactors[shiftedDates[tripIndices]], 
             indices, indptr)
         )
-#         if independentAnglers:
-#             self.angler_dayFactor = sp.sparse.diags(dispersionMultiplier[self.angler_origins])*self.angler_dayFactor
         
             
-        HUCProbabilities = self.cityHUCTrafficModel.get_HUC_probabilities()
-        rawRegionProbabilities = np.array([[probs[r].sum() for r in self.regionToHUC]
-                                         for probs in HUCProbabilities])
+        subbasinProbabilities = self.localitySubbasinTrafficModel.get_subbasin_probabilities()
+        rawRegionProbabilities = np.array([[probs[r].sum() for r in self.regionToSubbasin]
+                                         for probs in subbasinProbabilities])
         regionProbabilities = rawRegionProbabilities/rawRegionProbabilities.sum(1)[:,None]
         
         self.angler_trip_kappa_0 = ndarray_flex.from_arr_list(
-            [HUCProbabilities[o, a] for o, a in 
+            [subbasinProbabilities[o, a] for o, a in 
              zip(self.angler_origins, self.angler_destinations)])
         
         self.angler_trip_iota_0 = ndarray_flex.from_arr_list(
             [np.insert(a[1:]==a[:-1], 0, 0) for a in self.angler_destinations])
         
-        self.angler_regionCandidates = [list(set(iterchain(*self.HUCToRegion[HUCs]))) 
-                                        for HUCs in self.angler_destinations]
+        self.angler_regionCandidates = [list(set(iterchain(*self.subbasinToRegion[subbasins]))) 
+                                        for subbasins in self.angler_destinations]
         
         anglerNumber = self.angler_origins.size
         angler_noRegionCandidateProbabilities = np.zeros(anglerNumber)
         angler_regionCandidate_Probabilities = []
         angler_kappa1 = []
         
-        for i, (origin, HUCs, regions) in enumerate(zip(self.angler_origins,
+        for i, (origin, subbasins, regions) in enumerate(zip(self.angler_origins,
                         self.angler_destinations, self.angler_regionCandidates)):
             angler_regionCandidate_Probabilities.append(regionProbabilities[origin, regions])
             angler_noRegionCandidateProbabilities[i] = 1-regionProbabilities[origin, regions].sum()
-            kappa1 = np.array([np.in1d(HUCs, regionHUCs) for 
-                               regionHUCs in self.regionToHUC[regions]], float)
+            kappa1 = np.array([np.in1d(subbasins, regionSubbasins) for 
+                               regionSubbasins in self.regionToSubbasin[regions]], float)
             kappa1 /= rawRegionProbabilities[origin, regions][:, None]
             angler_kappa1.append(kappa1)
         
@@ -2634,9 +2594,6 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         
         self.daysWithObservationCount = self.angler_dayTripCounts.data.size
         self.tripCounts = self.angler_dayTripCounts.sum(1)
-        
-        #from timeit import timeit
-        #timeit("self.negative_log_likelihood(np.zeros(5))", number=10, globals={**globals(), **locals()})
         
     def negative_log_likelihood(self, parameters, convertParameters=True):
         if convertParameters:
@@ -2661,10 +2618,10 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         #"""
         #nu_a /= 10
         mu_a_nu_a = self.anglerRateFactor / coverage
-        city_mu_a_nu_a = self.city_anglerRateFactor / coverage
+        locality_mu_a_nu_a = self.locality_anglerRateFactor / coverage
         qFact = alpha/(nu_a * coverage)
         
-        nDay = self.cityHUCTrafficModel.dayCount
+        nDay = self.localitySubbasinTrafficModel.dayCount
         truncationNo = self.truncationNo
         angler_dayFactor = self.angler_dayFactor.data / alpha
         tripCounts = self.tripCounts
@@ -2677,13 +2634,13 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
                                  + Y_factorsBinom_r, Y_factorsBinom_r)
         Y_factors = concatenate((Y_factorsFrac, Y_factorsBinom))
         
-        q1 = 1 / (1 + qFact*self.Y_mult1["cityFactor"])
+        q1 = 1 / (1 + qFact*self.Y_mult1["localityFactor"])
         eta1 = (1-q1) * (1-nu_a)
         Y_mult1 = (power(1-eta1, self.Y_mult1["timeFactor"] / alpha 
                         + self.Y_mult1["tripCount"]) 
                    * Y_factors[self.Y_mult1["YFactorIndex"]])
         
-        q2 = 1 / (1 + qFact*self.Y_mult2["cityFactor"])
+        q2 = 1 / (1 + qFact*self.Y_mult2["localityFactor"])
         eta2 = (1-q2) * (1-nu_a)
         Y_mult2 = (power(1-eta2, self.Y_mult2["timeFactor"] / alpha 
                          + self.Y_mult2["tripCount"]) 
@@ -2695,8 +2652,8 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         k = np.arange(truncationNo)[:,None]
         
         r = self.L_factorsBinom["timeFactor"] / alpha - 1
-        # q3 = 1 / (1 + qFact*self.L_factorsBinom["cityFactor"])
-        q3_part = qFact*self.L_factorsBinom["cityFactor"]
+        # q3 = 1 / (1 + qFact*self.L_factorsBinom["localityFactor"])
+        q3_part = qFact*self.L_factorsBinom["localityFactor"]
         # eta3 = (1-q3) * (1-nu_a)
         eta3 = (q3_part/(1+q3_part)) * (1-nu_a)
         L_Binom = agbinom(k+r, r) * power(eta3, k)
@@ -2704,8 +2661,8 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         r = self.L_factorsHypergeom["timeFactor"] / alpha
         tripCountHypergeom = self.L_factorsHypergeom["tripCount"]
         
-        # q4 = 1 / (1 + qFact*self.L_factorsHypergeom["cityFactor"])
-        q4_part = qFact*self.L_factorsHypergeom["cityFactor"]
+        # q4 = 1 / (1 + qFact*self.L_factorsHypergeom["localityFactor"])
+        q4_part = qFact*self.L_factorsHypergeom["localityFactor"]
         # eta4 = (1-q4) * (1-nu_a)
         eta4 = (q4_part/(1+q4_part)) * (1-nu_a)
         L_Hypergeom = (agbinom((tripCountHypergeom+r-1)+k, r-1) 
@@ -2742,10 +2699,10 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         
         # qq = 1 / (1 + alpha*mu_a_nu_a)
         qq_inverse = (1 + alpha*mu_a_nu_a)
-        city_qq_inverse = (1 + alpha*city_mu_a_nu_a)
+        locality_qq_inverse = (1 + alpha*locality_mu_a_nu_a)
         result = (
-             - npsum(self.city_unobservedAnglers 
-                    * log(1 + coverage * (city_qq_inverse**(-nDay/alpha) - 1)))
+             - npsum(self.locality_unobservedAnglers 
+                    * log(1 + coverage * (locality_qq_inverse**(-nDay/alpha) - 1)))
              - np.log(coverage)*anglerNumber
              + npsum(log(qq_inverse)) * nDay/alpha
             #npsum(log(power(qq_inverse, nDay/alpha)-1)) 
@@ -2758,8 +2715,8 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         """
         (-npsum(gammaln(counts+rt)) + npsum(gammaln(rt)) #+npsum(gammaln(counts+1)) 
                 + r*self.dayCount*npsum(log_q_denominator) - counts.sum()*log(c)
-                - npsum(counts*log(meanFactor[cities, HUCs])) 
-                + npsum(counts*log_q_denominator[cities, HUCs])
+                - npsum(counts*log(meanFactor[cities, subbasins])) 
+                + npsum(counts*log_q_denominator[cities, subbasins])
                 ) 
         """
         if np.isnan(result):
@@ -2781,7 +2738,7 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         mu_a_nu_a = self.anglerRateFactor / coverage
         qFact = alpha/(nu_a * coverage)
         
-        nDay = self.cityHUCTrafficModel.endDate - self.cityHUCTrafficModel.startDate
+        nDay = self.localitySubbasinTrafficModel.endDate - self.localitySubbasinTrafficModel.startDate
         truncationNo = self.truncationNo
         angler_dayFactor = self.angler_dayFactor.data / alpha
         anglerNumber = angler_dayFactor.shape[0]
@@ -2790,8 +2747,8 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         k = np.arange(truncationNo)[:,None]
         
         r = self.L_factorsBinom["timeFactor"] / alpha - 1
-        # q3 = 1 / (1 + qFact*self.L_factorsBinom["cityFactor"])
-        q3_part = qFact*self.L_factorsBinom["cityFactor"]
+        # q3 = 1 / (1 + qFact*self.L_factorsBinom["localityFactor"])
+        q3_part = qFact*self.L_factorsBinom["localityFactor"]
         # eta3 = (1-q3) * (1-nu_a)
         eta3 = (q3_part/(1+q3_part)) * (1-nu_a)
         L_Binom = agbinom(k+r, r) * power(eta3, k)
@@ -2799,8 +2756,8 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         r = self.L_factorsHypergeom["timeFactor"] / alpha
         tripCountHypergeom = self.L_factorsHypergeom["tripCount"]
         
-        # q4 = 1 / (1 + qFact*self.L_factorsHypergeom["cityFactor"])
-        q4_part = qFact*self.L_factorsHypergeom["cityFactor"]
+        # q4 = 1 / (1 + qFact*self.L_factorsHypergeom["localityFactor"])
+        q4_part = qFact*self.L_factorsHypergeom["localityFactor"]
         # eta4 = (1-q4) * (1-nu_a)
         eta4 = (q4_part/(1+q4_part)) * (1-nu_a)
         L_Hypergeom = (agbinom((tripCountHypergeom+r-1)+k, r-1) 
@@ -2871,9 +2828,6 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
                 )
         
     def get_nLL_functions(self):
-#         if self.cityHUCTrafficModel.independentAnglers:
-#             fun = self.negative_log_likelihood_independent
-#         else:
         fun = self.negative_log_likelihood
         grad = nd.Gradient(fun) #, num_steps=10)
         hess = nd.Hessian(fun) #, num_steps=10)
@@ -3049,7 +3003,7 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         
         fun_, _, _ = self.get_nLL_functions()
         
-        (rateFactor, HUCProbabilities, 
+        (rateFactor, subbasinProbabilities, 
          regionNormalization, regionCounts, sharedRegionProbabilities
          ) = self._computeMeanData
         
@@ -3071,10 +3025,10 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
             sharedRegionProbabilities = sharedRegionProbabilities[:, fromIndex]
             regionCounts = regionCounts[fromIndex]+regionCounts[sourcesConsidered]
             if sourcesConsidered is not None:
-                HUCProbabilities2 = HUCProbabilities[:,sourcesConsidered]
+                subbasinProbabilities2 = subbasinProbabilities[:,sourcesConsidered]
                 sharedRegionProbabilities = sharedRegionProbabilities[:, sourcesConsidered]
             else:
-                HUCProbabilities2 = HUCProbabilities
+                subbasinProbabilities2 = subbasinProbabilities
             
         if not sharedRegionProbabilities.any():
             sharedRegionProbabilities = 0
@@ -3085,16 +3039,16 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
             xi_A = 1 - xi_R
             
             if pairMode:
-                return ((rateFactor * HUCProbabilities[:,fromIndex]) * 
-                          (HUCProbabilities[:,toIndex] * (1-xi_0) 
+                return ((rateFactor * subbasinProbabilities[:,fromIndex]) * 
+                          (subbasinProbabilities[:,toIndex] * (1-xi_0) 
                            * (xi_A**2 + regionNormalization*(
                                xi_A*xi_R*regionCounts
                                + xi_R**2 * sharedRegionProbabilities)
                                ) + xi_0 * sameDestination)
                           ).sum() / nu_a
             else:
-                return ((rateFactor * HUCProbabilities[:,fromIndex])[:,None] * 
-                          (HUCProbabilities2 * (1-xi_0) 
+                return ((rateFactor * subbasinProbabilities[:,fromIndex])[:,None] * 
+                          (subbasinProbabilities2 * (1-xi_0) 
                            * (xi_A**2 + regionNormalization[:,None]*(
                                xi_A*xi_R*regionCounts
                                + xi_R**2 * sharedRegionProbabilities)))
@@ -3153,7 +3107,7 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         
         fun_, _, _ = self.get_nLL_functions()
         
-        (rateFactor, HUCProbabilities, 
+        (rateFactor, subbasinProbabilities, 
          regionNormalization, regionCounts, sharedRegionProbabilities
          ) = self._computeMeanData
         
@@ -3175,10 +3129,10 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
             sharedRegionProbabilities = sharedRegionProbabilities[:, fromIndex]
             regionCounts = regionCounts[fromIndex]+regionCounts[sourcesConsidered]
             if sourcesConsidered is not None:
-                HUCProbabilities2 = HUCProbabilities[:,sourcesConsidered]
+                subbasinProbabilities2 = subbasinProbabilities[:,sourcesConsidered]
                 sharedRegionProbabilities = sharedRegionProbabilities[:, sourcesConsidered]
             else:
-                HUCProbabilities2 = HUCProbabilities
+                subbasinProbabilities2 = subbasinProbabilities
             
         if not sharedRegionProbabilities.any():
             sharedRegionProbabilities = 0
@@ -3189,16 +3143,16 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
             xi_A = 1 - xi_R
             
             if pairMode:
-                return ((rateFactor * HUCProbabilities[:,fromIndex]) * 
-                          (HUCProbabilities[:,toIndex] * (1-xi_0) 
+                return ((rateFactor * subbasinProbabilities[:,fromIndex]) * 
+                          (subbasinProbabilities[:,toIndex] * (1-xi_0) 
                            * (xi_A**2 + regionNormalization*(
                                xi_A*xi_R*regionCounts
                                + xi_R**2 * sharedRegionProbabilities)
                                ) + xi_0 * sameDestination)
                           ).sum() / nu_a
             else:
-                return ((rateFactor * HUCProbabilities[:,fromIndex])[:,None] * 
-                          (HUCProbabilities2 * (1-xi_0) 
+                return ((rateFactor * subbasinProbabilities[:,fromIndex])[:,None] * 
+                          (subbasinProbabilities2 * (1-xi_0) 
                            * (xi_A**2 + regionNormalization[:,None]*(
                                xi_A*xi_R*regionCounts
                                + xi_R**2 * sharedRegionProbabilities)))
@@ -3257,7 +3211,7 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         pairIndex = np.nonzero(m==m.max())
         pairIndex = pairIndex[0][0], pairIndex[1][0]
         
-        sources = self.cityHUCTrafficModel.HUCData['infested']
+        sources = self.localitySubbasinTrafficModel.subbasinData['infested']
         sourcesConsidered = [sources, sources, None, None]
         risk = m[sources].sum(0) * (~sources)
         riskIndex = np.argmax(risk)
@@ -3271,8 +3225,6 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         result = np.zeros((dim, 2))
         
         indices, directions = zip(*iterproduct(range(dim), (-1, 1)))
-        
-        #model.cityHUCTrafficModel.HUCIDToHUCIndex[8010303]
         
         fromToIndex = [riskIndex, riskIndex, pairIndex, pairIndex]
         self.truncationNo = 150
@@ -3342,11 +3294,11 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
                                   profile_LL_args={}):
         
         if dates is None:
-            dates = np.arange(self.cityHUCTrafficModel.startDate, self.cityHUCTrafficModel.endDate)
+            dates = np.arange(self.localitySubbasinTrafficModel.startDate, self.localitySubbasinTrafficModel.endDate)
             
-        anglerNumbers = self.cityHUCTrafficModel.cityData["cityAnglers"]
-        timeFactor = self.cityHUCTrafficModel.timeModel.get_time_factor(dates)
-        rateFactor = self.cityHUCTrafficModel.get_trip_rate_factor()
+        anglerNumbers = self.localitySubbasinTrafficModel.localityData["localityAnglers"]
+        timeFactor = self.localitySubbasinTrafficModel.timeModel.get_time_factor(dates)
+        rateFactor = self.localitySubbasinTrafficModel.get_trip_rate_factor()
         allAnglers = anglerNumbers.sum()
         
         def result_fun(parameters):
@@ -3394,7 +3346,7 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         
         
     def get_traffic_mean(self, parameters=None, dates=None, 
-                         getReportedOnly=False, getByCity=False):
+                         getReportedOnly=False, getByLocality=False):
         
         if parameters is None:
             parameters = self.parameters
@@ -3403,17 +3355,12 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         xi_A = 1 - xi_R
         
         if dates is None:
-            dates = np.arange(self.cityHUCTrafficModel.startDate, self.cityHUCTrafficModel.endDate)
+            dates = np.arange(self.localitySubbasinTrafficModel.startDate, self.localitySubbasinTrafficModel.endDate)
             
-        anglerNumbers = self.cityHUCTrafficModel.cityData["cityAnglers"]
-        timeFactor = np.sum(self.cityHUCTrafficModel.timeModel.get_time_factor(dates))
+        anglerNumbers = self.localitySubbasinTrafficModel.localityData["localityAnglers"]
+        timeFactor = np.sum(self.localitySubbasinTrafficModel.timeModel.get_time_factor(dates))
         
-        rateFactor = self.cityHUCTrafficModel.get_trip_rate_factor()/coverage # = nu_a*mu_a
-#         if self.cityHUCTrafficModel.independentAnglers:
-#             anglerTripNumbers = anglerNumbers*np.prod(rateFactor)
-#             dispersionFactors, rateFactor = rateFactor
-#         else:
-        #anglerTripNumbers = anglerNumbers*rateFactor
+        rateFactor = self.localitySubbasinTrafficModel.get_trip_rate_factor()/coverage # = nu_a*mu_a
         
         self._computeMeanData = [rateFactor*timeFactor*anglerNumbers]
         
@@ -3424,42 +3371,38 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         else:
             pLarger0 = 1 - np.power(1+alpha*rateFactor, -timeFactor/alpha)
         
-#         if self.cityHUCTrafficModel.independentAnglers:
-#             p0 = np.power(1+alpha*rateFactor, -timeFactor/alpha*dispersionFactors*anglerNumbers)
-#         else:
+        subbasinProbabilities = self.localitySubbasinTrafficModel.get_subbasin_probabilities()
         
-        HUCProbabilities = self.cityHUCTrafficModel.get_HUC_probabilities()
-        
-        rawRegionProbabilities = np.array([[probs[r].sum() for r in self.regionToHUC]
-                                                for probs in HUCProbabilities])
+        rawRegionProbabilities = np.array([[probs[r].sum() for r in self.regionToSubbasin]
+                                                for probs in subbasinProbabilities])
         rawRegionProbabilitiesInv = 1/rawRegionProbabilities
         regionNormalization = 1/rawRegionProbabilities.sum(1)
-        regionCounts = np.array(self.HUCToRegion.fullshape).ravel()
+        regionCounts = np.array(self.subbasinToRegion.fullshape).ravel()
         
-        HUCNumber = self.HUCToRegion.size
-        cityNumber = HUCProbabilities.shape[0]
+        subbasinNumber = self.subbasinToRegion.size
+        localityNumber = subbasinProbabilities.shape[0]
         
-        sharedRegionProbabilities = np.zeros((cityNumber, HUCNumber, HUCNumber))
-        for i, toRegion1 in enumerate(self.HUCToRegion):
-            for j, toRegion2 in enumerate(self.HUCToRegion):
+        sharedRegionProbabilities = np.zeros((localityNumber, subbasinNumber, subbasinNumber))
+        for i, toRegion1 in enumerate(self.subbasinToRegion):
+            for j, toRegion2 in enumerate(self.subbasinToRegion):
                 sharedRegionProbabilities[:,i,j] = rawRegionProbabilitiesInv[:,
                                 np.intersect1d(toRegion1, toRegion2, True)].sum(1)
         
         
-        trafficByCity = ((anglerNumbers*coverage*(rateFactor*timeFactor - pLarger0))[:,None,None]
-                          * HUCProbabilities[:,None] * (np.rollaxis(HUCProbabilities.T[:,None], 2) * (1-xi_0)
+        trafficByLocality = ((anglerNumbers*coverage*(rateFactor*timeFactor - pLarger0))[:,None,None]
+                          * subbasinProbabilities[:,None] * (np.rollaxis(subbasinProbabilities.T[:,None], 2) * (1-xi_0)
                          * (xi_A**2 + regionNormalization[:,None,None]*(
                              xi_A*xi_R*(regionCounts+regionCounts[:,None])
                              + xi_R**2 * sharedRegionProbabilities)
-                             ) + np.diag(np.full(HUCProbabilities.shape[1], xi_0))[None,:,:])
+                             ) + np.diag(np.full(subbasinProbabilities.shape[1], xi_0))[None,:,:])
                          )
         
-        self._computeMeanData.extend([HUCProbabilities, regionNormalization, regionCounts, sharedRegionProbabilities])
+        self._computeMeanData.extend([subbasinProbabilities, regionNormalization, regionCounts, sharedRegionProbabilities])
         
-        if getByCity:
-            traffic = trafficByCity
+        if getByLocality:
+            traffic = trafficByLocality
         else:
-            traffic = trafficByCity.sum(0)
+            traffic = trafficByLocality.sum(0)
         
         return traffic
         
@@ -3470,8 +3413,8 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
     
     def get_possibly_observed_traffic(self, fullDataFileName=None):
         
-        HUCNumber = self.HUCToRegion.size
-        result = np.zeros((HUCNumber, HUCNumber))
+        subbasinNumber = self.subbasinToRegion.size
+        result = np.zeros((subbasinNumber, subbasinNumber))
         
         if not fullDataFileName:
             for row in self.angler_destinations:
@@ -3480,9 +3423,9 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
             lastDestination = {}
             anglerData = np.genfromtxt(fullDataFileName, delimiter=",",  
                                        skip_header = True, 
-                                       dtype = self.cityHUCTrafficModel.ANGLER_DATA_DTYPE)
-            for anglerID, _, HUCID, _ in anglerData:
-                destination = self.cityHUCTrafficModel.HUCIDToHUCIndex[HUCID]
+                                       dtype = self.localitySubbasinTrafficModel.ANGLER_DATA_DTYPE)
+            for anglerID, _, subbasinId, _ in anglerData:
+                destination = self.localitySubbasinTrafficModel.subbasinIdToSubbasinIndex[subbasinId]
                 if anglerID in lastDestination:
                     result[lastDestination[anglerID], destination] += 1
                 lastDestination[anglerID] = destination
@@ -3521,150 +3464,150 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         
         create_observed_predicted_mean_error_plot(predicted.sum(1), 
                                                   observed.sum(1), 
-                                                  saveFileName=saveFileName+"_HUC_out",
+                                                  saveFileName=saveFileName+"_subbasin_out",
                                                   comparisonFileName=comparisonFileName
                                                   )
         create_observed_predicted_mean_error_plot(predicted.sum(0), 
                                                   observed.sum(0), 
-                                                  saveFileName=saveFileName+"_HUC_in",
+                                                  saveFileName=saveFileName+"_subbasin_in",
                                                   comparisonFileName=comparisonFileName
                                                   )
         create_observed_predicted_mean_error_plot(predicted[~mask].ravel(), 
                                                   observed[~mask].ravel(), 
-                                                  saveFileName=saveFileName+"_HUC_pairs",
+                                                  saveFileName=saveFileName+"_subbasin_pairs",
                                                   comparisonFileName=comparisonFileName
                                                   )
         predicted = (predicted_+predicted_.T)[np.tri(*predicted_.shape, 0, bool)]
         observed = (observed_+observed_.T)[np.tri(*observed_.shape, 0, bool)]
         create_observed_predicted_mean_error_plot(predicted, 
                                                   observed, 
-                                                  saveFileName=saveFileName+"_HUC_pairs_bi",
+                                                  saveFileName=saveFileName+"_subbasin_pairs_bi",
                                                   comparisonFileName=comparisonFileName
                                                   )
         
         plt.show()
         
-    def save_HUC_HUC_predictions(self, fileName=None, parameters=None, dates=None, 
+    def save_subbasin_subbasin_predictions(self, fileName=None, parameters=None, dates=None, 
                                  cities=[None]):
         
         cities = list(OrderedDict((i,i) for i in cities))
         
-        cityInices = []
-        cityStrs = []
+        localityIndices = []
+        localityStrs = []
         
         if not fileName:
             fileName = self.fileName
         
-        for city in cities:
-            if city is not None:
-                cityInices.append(self.cityHUCTrafficModel.cityIDToCityIndex[city])
-                cityStrs.append("predicted"+str(city))
+        for locality in cities:
+            if locality is not None:
+                localityIndices.append(self.localitySubbasinTrafficModel.localityIdToLocalityIndex[locality])
+                localityStrs.append("predicted"+str(locality))
             else:
-                cityInices.append(None)
-                cityStrs.append("predictedAll")
+                localityIndices.append(None)
+                localityStrs.append("predictedAll")
         
         traffic = self.get_traffic_mean(parameters, dates, False, True)
                 
-        dtype = ([("pairID", int), ("fromHUC", IDTYPE), ("toHUC", IDTYPE)] 
-                 + [(city, float) for city in cityStrs])
+        dtype = ([("pairID", int), ("fromSubbasin", IDTYPE), ("toSubbasin", IDTYPE)] 
+                 + [(locality, float) for locality in localityStrs])
         
-        HUCData = self.cityHUCTrafficModel.HUCData
+        subbasinData = self.localitySubbasinTrafficModel.subbasinData
         
         
-        toHUC, fromHUC = np.meshgrid(HUCData["HUCID"], HUCData["HUCID"])
+        toSubbasin, fromSubbasin = np.meshgrid(subbasinData["subbasinId"], subbasinData["subbasinId"])
         
-        mask = np.tri(HUCData.size, HUCData.size, -1, bool).T
+        mask = np.tri(subbasinData.size, subbasinData.size, -1, bool).T
         
         result = np.zeros(mask.sum(), dtype=dtype)
-        result["fromHUC"] = fromHUC[mask]
-        result["toHUC"] = toHUC[mask]
+        result["fromSubbasin"] = fromSubbasin[mask]
+        result["toSubbasin"] = toSubbasin[mask]
         result["pairID"] = np.arange(result.size)
         
-        for city, cityIndex in zip(cityStrs, cityInices):
-            if cityIndex is None:
-                result[city] = traffic.sum(0)[mask]
+        for locality, localityIndex in zip(localityStrs, localityIndices):
+            if localityIndex is None:
+                result[locality] = traffic.sum(0)[mask]
             else:
-                result[city] = traffic[cityIndex][mask]
+                result[locality] = traffic[localityIndex][mask]
                 
         df = pd.DataFrame(result)
-        df.to_csv(fileName + "_HUC_HUC.csv", index=False)
+        df.to_csv(fileName + "_subbasin_subbasin.csv", index=False)
     
-    def save_HUC_risk(self, fileName=None, parameters=None, dates=None, 
+    def save_subbasin_risk(self, fileName=None, parameters=None, dates=None, 
                       cities=[None]):
         
         cities = list(OrderedDict((i,i) for i in cities))
         
-        cityInices = []
-        cityStrs = []
+        localityIndices = []
+        localityStrs = []
         
         if not fileName:
             fileName = self.fileName
         
-        for city in cities:
-            if city is not None:
-                cityInices.append(self.cityHUCTrafficModel.cityIDToCityIndex[city])
-                cityStrs.append("predicted"+str(city))
+        for locality in cities:
+            if locality is not None:
+                localityIndices.append(self.localitySubbasinTrafficModel.localityIdToLocalityIndex[locality])
+                localityStrs.append("predicted"+str(locality))
             else:
-                cityInices.append(None)
-                cityStrs.append("predictedAll")
+                localityIndices.append(None)
+                localityStrs.append("predictedAll")
         
         traffic = self.get_traffic_mean(parameters, dates, False, True)
                 
-        dtype = ([("HUCID", IDTYPE)] + [(city + "All", float) for city in cityStrs]
-                 + [(city + "Infested", float) for city in cityStrs])
+        dtype = ([("subbasinId", IDTYPE)] + [(locality + "All", float) for locality in localityStrs]
+                 + [(locality + "Infested", float) for locality in localityStrs])
         
-        HUCData = self.cityHUCTrafficModel.HUCData
+        subbasinData = self.localitySubbasinTrafficModel.subbasinData
         
         
-        result = np.zeros(HUCData.size, dtype=dtype)
-        result["HUCID"] = HUCData["HUCID"]
+        result = np.zeros(subbasinData.size, dtype=dtype)
+        result["subbasinId"] = subbasinData["subbasinId"]
         
-        for city, cityIndex in zip(cityStrs, cityInices):
-            if cityIndex is None:
-                cityTraffic = traffic.sum(0)
+        for locality, localityIndex in zip(localityStrs, localityIndices):
+            if localityIndex is None:
+                localityTraffic = traffic.sum(0)
             else:
-                cityTraffic = traffic[cityIndex]
-            np.fill_diagonal(cityTraffic, 0)
-            result[city+"All"] = cityTraffic.sum(1)
-            result[city+"Infested"] = (cityTraffic*HUCData["infested"]).sum(1)
+                localityTraffic = traffic[localityIndex]
+            np.fill_diagonal(localityTraffic, 0)
+            result[locality+"All"] = localityTraffic.sum(1)
+            result[locality+"Infested"] = (localityTraffic*subbasinData["infested"]).sum(1)
                 
         df = pd.DataFrame(result)
-        df.to_csv(fileName + "_HUC_risk.csv", index=False)
+        df.to_csv(fileName + "_subbasin_risk.csv", index=False)
     
-    def save_city_significance(self, fileName=None, parameters=None, dates=None):
+    def save_locality_significance(self, fileName=None, parameters=None, dates=None):
         
         if not fileName:
             fileName = self.fileName
         
         traffic = self.get_traffic_mean(parameters, dates, False, True)
                 
-        dtype = [("cityID", IDTYPE), ("cityPopulation", float), 
-                 ("cityAnglers", float), ("totalRiskTrips", float),
+        dtype = [("localityId", IDTYPE), ("localityPopulation", float), 
+                 ("localityAnglers", float), ("totalRiskTrips", float),
                  ("riskTripsPerInhabitant", float), 
                  ("riskTripsPerAngler", float)]
         
-        HUCData = self.cityHUCTrafficModel.HUCData
-        cityData = self.cityHUCTrafficModel.cityData
+        subbasinData = self.localitySubbasinTrafficModel.subbasinData
+        localityData = self.localitySubbasinTrafficModel.localityData
         
-        result = np.zeros(cityData.shape[0], dtype=dtype)
+        result = np.zeros(localityData.shape[0], dtype=dtype)
         
-        result["cityID"] = cityData["cityID"]
-        result["cityPopulation"] = cityData["cityPopulation"]
-        result["cityAnglers"] = cityData["cityAnglers"]
+        result["localityId"] = localityData["localityId"]
+        result["localityPopulation"] = localityData["localityPopulation"]
+        result["localityAnglers"] = localityData["localityAnglers"]
         
-        relevantMask = np.ix_(np.nonzero(HUCData["infested"])[0],
-                              np.nonzero(~HUCData["infested"])[0])
+        relevantMask = np.ix_(np.nonzero(subbasinData["infested"])[0],
+                              np.nonzero(~subbasinData["infested"])[0])
         
-        for cityIndex, row in enumerate(result):
-            cityTraffic = traffic[cityIndex]
-            np.fill_diagonal(cityTraffic, 0)
-            row["totalRiskTrips"] = cityTraffic[relevantMask].sum()
+        for localityIndex, row in enumerate(result):
+            localityTraffic = traffic[localityIndex]
+            np.fill_diagonal(localityTraffic, 0)
+            row["totalRiskTrips"] = localityTraffic[relevantMask].sum()
         
-        result["riskTripsPerInhabitant"] = result["totalRiskTrips"] / result["cityPopulation"]
-        result["riskTripsPerAngler"] = result["totalRiskTrips"] / result["cityAnglers"]
+        result["riskTripsPerInhabitant"] = result["totalRiskTrips"] / result["localityPopulation"]
+        result["riskTripsPerAngler"] = result["totalRiskTrips"] / result["localityAnglers"]
         
         df = pd.DataFrame(result)
-        df.to_csv(fileName + "_city_significance.csv", index=False)
+        df.to_csv(fileName + "_locality_significance.csv", index=False)
     
     
     def simulate_count_data(self, fileName, parameters=None, dates=None,
@@ -3674,45 +3617,45 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
             parameters = self.parameters
         
         if dates is None:
-            dates = np.arange(self.cityHUCTrafficModel.startDate, self.cityHUCTrafficModel.endDate)
+            dates = np.arange(self.localitySubbasinTrafficModel.startDate, self.localitySubbasinTrafficModel.endDate)
         
         xi_0, xi_R, nu_a, alpha, coverage = self.convert_parameters(parameters)
             
-        timeFactors = self.cityHUCTrafficModel.timeModel.get_time_factor(dates)
+        timeFactors = self.localitySubbasinTrafficModel.timeModel.get_time_factor(dates)
         
-        anglerNumbers = self.cityHUCTrafficModel.cityData["cityAnglers"].astype(int)
-        mu_a = self.cityHUCTrafficModel.get_trip_rate_factor() / (nu_a * coverage) 
+        anglerNumbers = self.localitySubbasinTrafficModel.localityData["localityAnglers"].astype(int)
+        mu_a = self.localitySubbasinTrafficModel.get_trip_rate_factor() / (nu_a * coverage) 
         
-        HUCProbabilities = self.cityHUCTrafficModel.get_HUC_probabilities()
+        subbasinProbabilities = self.localitySubbasinTrafficModel.get_subbasin_probabilities()
         
-        rawRegionProbabilities = np.array([[probs[r].sum() for r in self.regionToHUC]
-                                                for probs in HUCProbabilities])
+        rawRegionProbabilities = np.array([[probs[r].sum() for r in self.regionToSubbasin]
+                                                for probs in subbasinProbabilities])
         regionProbabilities = rawRegionProbabilities / rawRegionProbabilities.sum(1)[:,None]
         
         anglerOrigins = np.concatenate([np.full(n_i, i) for i, n_i in 
                                         enumerate(anglerNumbers)])
         
-        HUCProbabilitiesByRegion = np.empty(regionProbabilities.shape, dtype=object)
-        for i, (probs, norms) in enumerate(zip(HUCProbabilities, rawRegionProbabilities)):
-            for j, (r, norm) in enumerate(zip(self.regionToHUC, norms)):
-                HUCProbabilitiesByRegion[i, j] = probs[r]/norm
+        subbasinProbabilitiesByRegion = np.empty(regionProbabilities.shape, dtype=object)
+        for i, (probs, norms) in enumerate(zip(subbasinProbabilities, rawRegionProbabilities)):
+            for j, (r, norm) in enumerate(zip(self.regionToSubbasin, norms)):
+                subbasinProbabilitiesByRegion[i, j] = probs[r]/norm
                 
         
         np.random.seed()
         allTrips = self._simulate_angler_trips(anglerOrigins, dates, 
-                                               timeFactors, HUCProbabilities, 
+                                               timeFactors, subbasinProbabilities, 
                                                regionProbabilities, 
-                                               self.regionToHUC, 
-                                               HUCProbabilitiesByRegion, 
+                                               self.regionToSubbasin, 
+                                               subbasinProbabilitiesByRegion, 
                                                xi_0, xi_R, alpha, mu_a,
                                                independentCities)
         
         allTripsTransformed = np.zeros(allTrips.shape[0], 
-                               dtype=self.cityHUCTrafficModel.ANGLER_DATA_DTYPE)
+                               dtype=self.localitySubbasinTrafficModel.ANGLER_DATA_DTYPE)
         
         allTripsTransformed["anglerID"] = allTrips[:, 0]
-        allTripsTransformed["cityID"] = self.cityHUCTrafficModel.cityData["cityID"][allTrips[:, 1]]
-        allTripsTransformed["HUCID"] = self.cityHUCTrafficModel.HUCData["HUCID"][allTrips[:, 2]]
+        allTripsTransformed["localityId"] = self.localitySubbasinTrafficModel.localityData["localityId"][allTrips[:, 1]]
+        allTripsTransformed["subbasinId"] = self.localitySubbasinTrafficModel.subbasinData["subbasinId"][allTrips[:, 2]]
         allTripsTransformed["date"] = allTrips[:, 3]
         
         isReported = np.random.rand(allTripsTransformed.size) < nu_a
@@ -3720,14 +3663,14 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         potentiallyReportedTrips = allTripsTransformed[isReported]
         potentiallyReportedTripsUntranformed = allTrips[isReported]
         if preserveAnglerIdentity:
-            _, ind = np.unique(self.cityHUCTrafficModel.surveyData['anglerID'], return_index=True)
-            cities, counts = np.unique(self.cityHUCTrafficModel.surveyData[ind]['cityID'], return_counts=True)
+            _, ind = np.unique(self.localitySubbasinTrafficModel.surveyData['anglerID'], return_index=True)
+            cities, counts = np.unique(self.localitySubbasinTrafficModel.surveyData[ind]['localityId'], return_counts=True)
             appUsers = []
             _, ind2 = np.unique(allTripsTransformed['anglerID'], return_index=True)
             potentiallyIncludedAnglers = allTripsTransformed[ind2]
-            for city, count in zip(cities, counts):
+            for locality, count in zip(cities, counts):
                 considered_indices = np.random.choice(np.nonzero(
-                    potentiallyIncludedAnglers['cityID']==city)[0], 
+                    potentiallyIncludedAnglers['localityId']==locality)[0], 
                     count, replace=False)
                 appUsers.extend(potentiallyIncludedAnglers['anglerID'][considered_indices])
             appUsers = set(appUsers)
@@ -3745,8 +3688,8 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
             df.to_csv(fileName + fname + ".csv", index=False)
             
             
-    def _simulate_angler_trips(self, anglerOrigins, dates, timeFactors, HUCProbabilities,
-                               regionProbabilities, regionToHuc, HUCProbabilitiesByRegion, 
+    def _simulate_angler_trips(self, anglerOrigins, dates, timeFactors, subbasinProbabilities,
+                               regionProbabilities, regionToSubbasin, subbasinProbabilitiesByRegion, 
                                xi_0, xi_R, alpha, mu_a, independentCities=False):
         result = []
         
@@ -3754,7 +3697,7 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
         
         randGenerator = np.random.default_rng()
         
-        cityNumber, HUCNumber = HUCProbabilities.shape
+        localityNumber, subbasinNumber = subbasinProbabilities.shape
         
         if independentCities:
             tripRates = randGenerator.gamma(timeFactors[:,None]/alpha, scale=alpha*mu_a)
@@ -3789,11 +3732,11 @@ class HUCHUCAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveable):
                     behaviour = np.random.rand() 
                     
                     if behaviour < xi_A__:
-                        destination = randGenerator.choice(HUCNumber, 
+                        destination = randGenerator.choice(subbasinNumber, 
                                p=regionProbabilities[origin])
                     elif behaviour < xi_R__:
-                        destination = randGenerator.choice(regionToHuc[preferredRegion],
-                                                           p=HUCProbabilitiesByRegion[origin][preferredRegion])
+                        destination = randGenerator.choice(regionToSubbasin[preferredRegion],
+                                                           p=subbasinProbabilitiesByRegion[origin][preferredRegion])
                     else:
                         destination = lastDestinations[anglerIndex]
                         
