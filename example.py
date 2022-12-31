@@ -137,7 +137,8 @@ def fit_model(useKnownParameters=False):
     subbasinSubbasinModel.save_subbasin_risk(dates=np.arange(start, start+365), cities=[None, 28, 1281])
     
     # Maybe: Compute confidence intervals for some extreme results
-    #subbasinSubbasinModel.get_extreme_result_CIs(dates=np.arange(start, start+365), nmax=500) #, apprxtol=0.9)
+    # As this may take very long, we have commented out this command.
+    #subbasinSubbasinModel.get_extreme_result_CIs(dates=np.arange(start, start+365), nmax=500)
     
     # See how the predictions change, if another subbasin gets infested
     subbasinSubbasinModel.localitySubbasinTrafficModel.subbasinData[subbasinSubbasinModel.localitySubbasinTrafficModel.subbasinIdToSubbasinIndex[11020301]]["infested"] = True
