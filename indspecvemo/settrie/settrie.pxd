@@ -6,12 +6,10 @@
 
 from datrie cimport BaseTrie, BaseState, BaseIterator
 
-cdef bint has_subset_c(BaseTrie trie, BaseState trieState, str setarr, int index, int size)
+ctypedef unsigned char char_type
 
-"""
-cdef void delete_subsets_c(BaseTrie trie, BaseState trieState, str setarr, 
-                          int index, int size, str trace)
-"""
+cdef bint has_subset(BaseTrie trie, BaseState trieState, str setarr, int index, int size) except +
+cdef bint has_subset_c(BaseTrie trie, BaseState trieState, char* setarr, int index, int size) except +
 
 cdef class SetTrie():
     cdef BaseTrie trie

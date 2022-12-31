@@ -28,7 +28,7 @@ from autograd import grad, hessian
 from hybrid_vector_model.hybrid_vector_model import BaseTrafficFactorModel, \
     _non_join, create_observed_predicted_mean_error_plot, safe_delattr
 from vemomoto_core.tools.hrprint import HierarchichalPrinter
-from vemomoto_core.tools.saveobject import SeparatelySaveable, load_object
+from vemomoto_core.tools.saveobject import SeparatelySaveable
 from vemomoto_core.concurrent.concurrent_futures_ext import ProcessPoolExecutor
 from vemomoto_core.npcollections.npext import convert_R_pos,\
     convert_R_0_1, convert_R_pos_reverse
@@ -37,9 +37,15 @@ from autograd.scipy.special import gammaln
 from vemomoto_core.tools.doc_utils import inherit_doc, staticmethod_inherit_doc
 from ci_rvm import find_CI_bound
 
-from aicopt import AICOptimizer
+from .aicopt import AICOptimizer
 
+MAX_WORKERS = os.cpu_count()
 
+# If working on a server, decrease the utilized cpu cores
+if MAX_WORKERS > 40:
+    MAX_WORKERS //= 3
+    import matplotlib
+    matplotlib.use("Agg")
 
 if __name__ == '__main__':
     # The first command line argument specifies the output file to which all output
@@ -1324,32 +1330,23 @@ class BaseLocalitySubbasinAnglerTrafficModel(SeparatelySaveable, HierarchichalPr
                 x0 = None
             
             myAICOptimizer = AICOptimizer(self.maximize_likelihood, basePermutation, 
-                                      [None, x0], dependencies, 2, resultHandler)
-            results = myAICOptimizer.run(limit, 0)
+                                      [x0], dependencies, 2, resultHandler, MAX_WORKERS)
             fittedModel = True
         else:
+            parametersConsidered = np.ma.array(parameters["parametersConsidered"])
+            parametersConsidered[:] = np.ma.masked
+            myAICOptimizer = AICOptimizer(self.maximize_likelihood, parametersConsidered, 
+                                          [parameters["parameters"], continueOptimization], 
+                                          dependencies, 2, resultHandler, 1)
+            limit = 0
             if continueOptimization:
-                result = self.maximize_likelihood(
-                                  parameters["parametersConsidered"], 
-                                  parameters["parameters"])
                 fittedModel = True
-            else:
-                result = self.maximize_likelihood(
-                                  parameters["parametersConsidered"], 
-                                  parameters["parameters"],
-                                  False)
-            
-            myAICOptimizer = AICOptimizer(self.maximize_likelihood, basePermutation, 
-                                      [None, None], dependencies, 2, resultHandler)
-            myAICOptimizer.add_result(frozenset(np.nonzero(parameters["parametersConsidered"])[0]), 
-                                    result.fun, not result.success, resultHandler(result)[1])
-            results = myAICOptimizer.extract_results()
+        
+        results = myAICOptimizer.run(limit, 0)
+        results = results[np.argsort(results["deltaAIC"])]
         self.results = results
         
-        results = results[np.argsort(results["deltaAIC"])]
-        
         self.decrease_print_level()
-        
         
         _, AIC, nLL, covariates, error, (bestParameters, bestParametersOriginal) = results[0]
         
@@ -1373,7 +1370,6 @@ class BaseLocalitySubbasinAnglerTrafficModel(SeparatelySaveable, HierarchichalPr
                 deltaAIC, "*" if error else " ", AIC, nLL), 
                 " | ".join((str(i) for i in (parametersConsidered.astype(int), xOriginal, list(x)))))
         
-        #self.results = results
         self.decrease_print_level()
             
         if (not self.isFitted or self.AIC >= AIC
@@ -1580,8 +1576,8 @@ class BaseLocalitySubbasinAnglerTrafficModel(SeparatelySaveable, HierarchichalPr
             pass
         
     
-    def read_angler_data(self, anglerDataFileName, fitDataFraction=1, 
-                         validationDataFraction=None, seed=1):
+    def read_angler_data(self, anglerDataFileName, dataFractionForFitting=1, 
+                         dataFractionForValidation=None, seed=1):
         """Reads the survey observation data.
         
         Parameters
@@ -1589,11 +1585,11 @@ class BaseLocalitySubbasinAnglerTrafficModel(SeparatelySaveable, HierarchichalPr
         anglerDataFileName : str 
             Name of a csv file containing the road network. The file must be a 
             have a header (will be ignored) and columns separated by ``,``.
-        fitDataFraction : float
+        dataFractionForFitting : float
             Fraction of the data that shall be used for model fitting
-        validationDataFraction : float
+        dataFractionForValidation : float
             Fraction of the data that shall be used for model validation.
-            If `None`, it is computed as `1-fitDataFraction`
+            If `None`, it is computed as `1-dataFractionForFitting`
         seed : int
             Seed of the random generator used when splitting the data
             into fitting and validation data
@@ -1609,17 +1605,17 @@ class BaseLocalitySubbasinAnglerTrafficModel(SeparatelySaveable, HierarchichalPr
                                    skip_header = True, 
                                    dtype = dtype)
         
-        if validationDataFraction is None:
-            validationDataFraction = 1-fitDataFraction
-        elif validationDataFraction+fitDataFraction > 1:
-            raise ValueError("The sum of validationDataFraction and fitDataFraction must not exceed 1.")
+        if dataFractionForValidation is None:
+            dataFractionForValidation = 1-dataFractionForFitting
+        elif dataFractionForValidation+dataFractionForFitting > 1:
+            raise ValueError("The sum of dataFractionForValidation and dataFractionForFitting must not exceed 1.")
         
         
-        if fitDataFraction < 1:
+        if dataFractionForFitting < 1:
             anglers, anglerIndices = np.unique(surveyData["anglerId"], 
                                                return_inverse=True)
-            fitSize = int(round(fitDataFraction*anglers.size))
-            validationSize = int(round(validationDataFraction*anglers.size))
+            fitSize = int(round(dataFractionForFitting*anglers.size))
+            validationSize = int(round(dataFractionForValidation*anglers.size))
             if validationSize + fitSize > anglers.size:
                 validationSize -= 1
             
@@ -1636,8 +1632,8 @@ class BaseLocalitySubbasinAnglerTrafficModel(SeparatelySaveable, HierarchichalPr
             self.validationData = None    
         
         
-        self.fitDataFraction = fitDataFraction
-        self.validationDataFraction = validationDataFraction
+        self.dataFractionForFitting = dataFractionForFitting
+        self.dataFractionForValidation = dataFractionForValidation
             
         self.surveyData = surveyData
     
@@ -1719,8 +1715,8 @@ class BaseLocalitySubbasinAnglerTrafficModel(SeparatelySaveable, HierarchichalPr
         
         if not comparisonFileName and self.validationData is not None:
             comparisonObserved = self.get_traffic_observations(True)
-            comparisonPredicted = predicted * (self.validationDataFraction/self.fitDataFraction)
-            trivialPrediction = observed * (self.validationDataFraction/self.fitDataFraction)
+            comparisonPredicted = predicted * (self.dataFractionForValidation/self.dataFractionForFitting)
+            trivialPrediction = observed * (self.dataFractionForValidation/self.dataFractionForFitting)
             """
             mask = comparisonPredicted < comparisonPredicted.mean()
             comparisonObserved = np.ma.array(comparisonObserved, mask=mask)
@@ -1777,7 +1773,7 @@ class BaseLocalitySubbasinAnglerTrafficModel(SeparatelySaveable, HierarchichalPr
         
         create_observed_predicted_mean_error_plot(predicted.ravel(), 
                                                   observed.ravel(), 
-                                                  err,
+                                                  np.abs(err),
                                                   saveFileName=_non_join(saveFileName, "_pairs"),
                                                   comparisonFileName=_non_join(comparisonFileName, "_pairs"),
                                                   comparisonPredicted = comparisonPredicted,
@@ -1956,11 +1952,11 @@ class DailyLocalitySubbasinAnglerTrafficModel(BaseLocalitySubbasinAnglerTrafficM
     def _convert_static_parameters(self, parameters):
         return [convert_R_pos(parameters[0]), convert_R_pos(parameters[1])]
     
-    def read_angler_data(self, anglerDataFileName, fitDataFraction=1, 
-                         validationDataFraction=None):
+    def read_angler_data(self, anglerDataFileName, dataFractionForFitting=1, 
+                         dataFractionForValidation=None):
         BaseLocalitySubbasinAnglerTrafficModel.read_angler_data(self, anglerDataFileName,
-                                                       fitDataFraction,
-                                                       validationDataFraction)
+                                                       dataFractionForFitting,
+                                                       dataFractionForValidation)
         self.set_pair_day_count_data()
         self.dayCount = self.endDate - self.startDate
     
@@ -2836,10 +2832,7 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
      
     def fit(self, refit=False, parameters=None, 
             continueOptimization=False, get_CI=True, plotFileName=None):
-        """Fits the traffic flow (gravity) model.
-        
-        Fits one or multiple candidates for the traffic flow model and selects
-        the model with minimal AIC value. 
+        """Fits the subbasin to subbasin traffic model.
         
         Parameters
         ----------
@@ -2863,7 +2856,7 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
             if ``continueFlowOptimization is False``.
         
         """
-        self.prst("Fitting flow models.")
+        self.prst("Fitting the subbasin to subbasin model.")
         self.increase_print_level()
         
         fittedModel = False
@@ -2873,8 +2866,10 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
                       "refit=True")
             return False
         
+        if not hasattr(self, "anglerRateFactor"):
+            self.prepare_survey_data()
+        
         if parameters is None:
-            
             result = self.maximize_likelihood()
             fittedModel = True
         else:
@@ -2903,8 +2898,6 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
     
     def maximize_likelihood(self, parameters=None, continueOptimization=True):
         fun, jac, hess = self.get_nLL_functions()
-        #parameters = [-1.25488258e-01 ,-6.60105870e-03 ,-1.36528867e+00 , 1.56130421e+01,  -6.05960163e+00]
-        #continueOptimization = False
         if not continueOptimization and parameters is not None:
             result = op.OptimizeResult(x=parameters, success=True, status=0,
                                        fun=self.negative_log_likelihood(parameters), 
@@ -2919,11 +2912,9 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         if parameters is None:
             bounds = self.PARAMETERS_BOUNDS
             np.random.seed()
-            #profile("jac(np.zeros(5))", globals(), locals())
-            #profile("hess(np.zeros(5))", globals(), locals())
             result = op.differential_evolution(fun, bounds, 
                                                popsize=30, maxiter=30, #300, 
-                                               disp=True) #, workers=-1)
+                                               disp=True) #, workers=min(os.cpu_count(), 30))
             self.prst("Differential evolution result:", result)
             parameters = result.x.copy()
             result.xOriginal = self.convert_parameters(result.x)
@@ -3093,111 +3084,7 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
                                      **profile_LL_args)
     
     
-    def find_mean_days_out_profile_CI(self, direction, relativeError=1e-4, 
-                                      profile_LL_args={}):
-        """Searches the profile likelihood confidence interval for a given
-        result.
-        
-        Parameters
-        ----------
-        profile_LL_args : dict
-            Keyword arguments to be passed to :py:meth:`find_CI_bound`.
-        
-        """
-        
-        fun_, _, _ = self.get_nLL_functions()
-        
-        (rateFactor, subbasinProbabilities, 
-         regionNormalization, regionCounts, sharedRegionProbabilities
-         ) = self._computeMeanData
-        
-        if hasattr(fromToIndex, '__iter__'):
-            if len(fromToIndex) > 1: 
-                fromIndex, toIndex = fromToIndex[:2]
-            else:
-                fromIndex, toIndex = fromToIndex[0], None
-        else:
-            fromIndex, toIndex = fromToIndex, None
-        
-        
-        pairMode = toIndex is not None
-        if pairMode:
-            sharedRegionProbabilities = sharedRegionProbabilities[:, fromIndex, toIndex]
-            sameDestination = (fromIndex == toIndex) + 0
-            regionCounts = regionCounts[fromIndex]+regionCounts[toIndex]
-        else:
-            sharedRegionProbabilities = sharedRegionProbabilities[:, fromIndex]
-            regionCounts = regionCounts[fromIndex]+regionCounts[sourcesConsidered]
-            if sourcesConsidered is not None:
-                subbasinProbabilities2 = subbasinProbabilities[:,sourcesConsidered]
-                sharedRegionProbabilities = sharedRegionProbabilities[:, sourcesConsidered]
-            else:
-                subbasinProbabilities2 = subbasinProbabilities
-            
-        if not sharedRegionProbabilities.any():
-            sharedRegionProbabilities = 0
-        
-        def result_fun(parameters):
-            
-            xi_0, xi_R, nu_a, _, _ = self.convert_parameters(parameters)
-            xi_A = 1 - xi_R
-            
-            if pairMode:
-                return ((rateFactor * subbasinProbabilities[:,fromIndex]) * 
-                          (subbasinProbabilities[:,toIndex] * (1-xi_0) 
-                           * (xi_A**2 + regionNormalization*(
-                               xi_A*xi_R*regionCounts
-                               + xi_R**2 * sharedRegionProbabilities)
-                               ) + xi_0 * sameDestination)
-                          ).sum() / nu_a
-            else:
-                return ((rateFactor * subbasinProbabilities[:,fromIndex])[:,None] * 
-                          (subbasinProbabilities2 * (1-xi_0) 
-                           * (xi_A**2 + regionNormalization[:,None]*(
-                               xi_A*xi_R*regionCounts
-                               + xi_R**2 * sharedRegionProbabilities)))
-                          ).sum() / nu_a
-        
-        x0 = self.parameters              
-        error = result_fun(x0) * relativeError
-        x0 = np.insert(x0, 0, result_fun(x0))
-        
-        fun_2 = lambda x: 0.5 * ((result_fun(x[1:])-x[0])/error)**2
-        fun = lambda x: -fun_(x[1:]) - fun_2(x)
-        
-        #"""
-        jac_ = nd.Gradient(fun_) #, base_step=base_step)
-        jac_2 = grad(fun_2)
-        def jac(x):
-            result = - jac_2(x)
-            result[1:] -= jac_(x[1:]) 
-            return result
-        
-        fun_2(x0+np.eye(1,6,1).ravel()*1e-5)
-        hess_ = nd.Hessian(fun_)
-        hess_2 = hessian(fun_2)
-        def hess(x):
-            result = -hess_2(x)
-            result[1:, 1:] -= hess_(x[1:])
-            return result
-#         base_step = np.full(6, 1e-13)
-#         base_step[0] = 1e-8
-#         from vemomoto_core.tools.simprofile import profile
-#         profile("jac(x0)", globals(), locals())
-#         profile("jac2(x0)", globals(), locals())
-#         diff = lambda x, i, p: (fun(x+np.eye(1,6,i).ravel()*p)-fun(x-np.eye(1,6,i).ravel()*p))/(2*p)
-        #"""
-#         jacX = nd.Gradient(fun)
-#         hessX = nd.Hessian(fun)
-#         j1 = jac(x0)
-#         j2 = jacX(x0)
-#         h1 = hess(x0)
-#         jh2 = hessX(x0)
-        return find_CI_bound(x0, fun, jac, hess, 0, direction, 
-                                     **profile_LL_args)
-        
-    
-    def get_results_CIs(self, dates, relativeError=1e-4, **profile_LL_args):
+    def get_extreme_result_CIs(self, dates, relativeError=1e-4, **profile_LL_args):
         
         
         self.prst("Creating confidence intervals for some extreme results")
@@ -3291,7 +3178,7 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
     
     
     def get_mean_days_out_with_CI(self, dates=None, relativeError=1e-4, nmax=400,
-                                  profile_LL_args={}):
+                                  disp=True, profile_LL_args={}):
         
         if dates is None:
             dates = np.arange(self.localitySubbasinTrafficModel.startDate, self.localitySubbasinTrafficModel.endDate)
@@ -3318,6 +3205,7 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         
         jac_ = nd.Gradient(fun_) 
         jac_2 = grad(fun_2)
+        
         def jac(x):
             result = - jac_2(x)
             result[1:] -= jac_(x[1:]) 
@@ -3326,6 +3214,7 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         fun_2(x0+np.eye(1,6,1).ravel()*1e-5)
         hess_ = nd.Hessian(fun_)
         hess_2 = hessian(fun_2)
+        
         def hess(x):
             result = -hess_2(x)
             result[1:, 1:] -= hess_(x[1:])
@@ -3333,11 +3222,11 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         
         print("Finding lower CI")
         lowerCI = find_CI_bound(x0, fun, jac, hess, 0, -1, nmax=nmax,
-                                        **profile_LL_args).x[0]
+                                disp=disp, **profile_LL_args).x[0]
         print("lowerCI", lowerCI)
         print("Finding upper CI")
         upperCI = find_CI_bound(x0, fun, jac, hess, 0, 1, nmax=nmax,
-                                        **profile_LL_args).x[0]
+                                disp=disp, **profile_LL_args).x[0]
         print("upperCI", upperCI)
         
         print("Mean days out: [{:8.2f}, {:8.2f}, {:8.2f}]".format(lowerCI,
@@ -3704,7 +3593,6 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         else:
             tripRates = randGenerator.gamma(timeFactors[:,None]/alpha, scale=alpha)*mu_a
         
-        #regionNumber = regionProbabilities.shape[1]
         choice = lambda p: (p.cumsum(1) > np.random.rand(p.shape[0])[:,None]).argmax(1)
         #choice = lambda p: randGenerator.choice(regionNumber, p=p)
         #preferredRegions = np.apply_along_axis(choice, 1, regionProbabilities[anglerOrigins])

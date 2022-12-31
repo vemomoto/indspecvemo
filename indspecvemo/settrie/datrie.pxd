@@ -29,15 +29,9 @@ except ImportError:
 cdef class BaseTrie:
     cdef AlphaMap alpha_map
     cdef cdatrie.Trie *_c_trie
-
     cpdef bint is_dirty(self)
-
     cdef void _setitem(self, unicode key, cdatrie.TrieData value)
-
-    
     cdef cdatrie.TrieData _getitem(self, unicode key) except -1
-
-    
     cpdef bint _delitem(self, unicode key) except -1
     
     @staticmethod
@@ -45,25 +39,14 @@ cdef class BaseTrie:
                             void *counter_ptr)
     
     cdef cdatrie.TrieData _setdefault(self, unicode key, cdatrie.TrieData value)
-
-    
     cpdef suffixes(self, unicode prefix)
-
     cdef list _prefix_items(self, unicode key)
-
     cdef list _prefix_values(self, unicode key)
-
     cdef _longest_prefix_item(self, unicode key, default)
-
     cdef _longest_prefix_value(self, unicode key, default)
-
     cpdef items(self, unicode prefix)
-
-    
     cpdef keys(self, unicode prefix)
-
     cpdef values(self, unicode prefix)
-
     cdef _index_to_value(self, cdatrie.TrieData index)
 
 
@@ -74,11 +57,8 @@ cdef class Trie(BaseTrie):
     """
 
     cdef list _values
-
     cpdef items(self, unicode prefix)
-
     cpdef values(self, unicode prefix)
-
     cdef _index_to_value(self, cdatrie.TrieData index)
 
 
@@ -86,12 +66,9 @@ cdef class _TrieState:
     cdef cdatrie.TrieState* _state
     cdef BaseTrie _trie
 
-    cpdef walk(self, unicode to)
-
+    cpdef bintwalk(self, unicode to)
     cdef bint walk_char(self, cdatrie.AlphaChar char)
-
     cpdef copy_to(self, _TrieState state)
-
     cpdef rewind(self)
 
     cpdef bint is_terminal(self)

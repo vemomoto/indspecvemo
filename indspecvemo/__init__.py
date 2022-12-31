@@ -1,1 +1,1 @@
-from angler_movement_model import *
+from .angler_movement_model import *
