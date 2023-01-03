@@ -3197,8 +3197,9 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         
         
         x0 = self.parameters
-        error = result_fun(x0) * relativeError
-        x0 = np.insert(x0, 0, result_fun(x0))
+        result = result_fun(x0)
+        error = result * relativeError
+        x0 = np.insert(x0, 0, result)
         
         fun_2 = lambda x: 0.5 * ((result_fun(x[1:])-x[0])/error)**2
         fun = lambda x: -fun_(x[1:]) - fun_2(x)
@@ -3230,7 +3231,7 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         print("upperCI", upperCI)
         
         print("Mean days out: [{:8.2f}, {:8.2f}, {:8.2f}]".format(lowerCI,
-                                                                  result_fun(x0),
+                                                                  result,
                                                                   upperCI))
         
         
