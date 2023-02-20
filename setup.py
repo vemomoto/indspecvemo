@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     setup(
         name=PACKAGE_NAME,
-        version=0.1,
+        version=0.2,
         ext_modules=extensions, 
         setup_requires=['cython'],
         packages=[PACKAGE_NAME],
@@ -77,7 +77,7 @@ if __name__ == "__main__":
             'autograd',
             'hybrid_vector_model',
             'vemomoto_core',
-            'ci_rvm',
+            'ci_rvm>=0.10.0a0',
             ], 
         python_requires='>=3.8',
         zip_safe=False,

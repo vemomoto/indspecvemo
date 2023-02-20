@@ -485,7 +485,7 @@ class TimeModel(SeparatelySaveable, HierarchichalPrinter):
         jac_ = lambda x: -jac(x)   
         hess_ = lambda x: -hess(x) 
         
-        return find_CI_bound(x0, fun_, jac_, hess_, index, direction, 
+        return find_CI_bound(x0, fun_, index, direction, jac_, hess_, 
                                      **profile_LL_args)
     
     def investigate_profile_likelihood(self, x0, parametersConsidered,
@@ -1401,7 +1401,7 @@ class BaseLocalitySubbasinAnglerTrafficModel(SeparatelySaveable, HierarchichalPr
         jac_ = lambda x: -jac(x)   
         hess_ = lambda x: -hess(x) 
         
-        return find_CI_bound(x0, fun_, jac_, hess_, index, direction, 
+        return find_CI_bound(x0, fun_, index, direction, jac_, hess_, 
                                      **CI_args)
     
     def investigate_profile_likelihood(self, x0, parametersConsidered,
@@ -2976,7 +2976,7 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         jac_ = lambda x: -jac(x)   
         hess_ = lambda x: -hess(x) 
         
-        return find_CI_bound(x0, fun_, jac_, hess_, index, direction, 
+        return find_CI_bound(x0, fun_, index, direction, jac_, hess_, 
                                      **profile_LL_args)
     
     def _find_result_profile_CI(self, direction, fromToIndex, 
@@ -3052,7 +3052,6 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
         fun_2 = lambda x: 0.5 * ((result_fun(x[1:])-x[0])/error)**2
         fun = lambda x: -fun_(x[1:]) - fun_2(x)
         
-        #"""
         jac_ = nd.Gradient(fun_) #, base_step=base_step)
         jac_2 = grad(fun_2)
         def jac(x):
@@ -3060,27 +3059,13 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
             result[1:] -= jac_(x[1:]) 
             return result
         
-        fun_2(x0+np.eye(1,6,1).ravel()*1e-5)
         hess_ = nd.Hessian(fun_)
         hess_2 = hessian(fun_2)
         def hess(x):
             result = -hess_2(x)
             result[1:, 1:] -= hess_(x[1:])
             return result
-#         base_step = np.full(6, 1e-13)
-#         base_step[0] = 1e-8
-#         from vemomoto_core.tools.simprofile import profile
-#         profile("jac(x0)", globals(), locals())
-#         profile("jac2(x0)", globals(), locals())
-#         diff = lambda x, i, p: (fun(x+np.eye(1,6,i).ravel()*p)-fun(x-np.eye(1,6,i).ravel()*p))/(2*p)
-        #"""
-#         jacX = nd.Gradient(fun)
-#         hessX = nd.Hessian(fun)
-#         j1 = jac(x0)
-#         j2 = jacX(x0)
-#         h1 = hess(x0)
-#         jh2 = hessX(x0)
-        return find_CI_bound(x0, fun, jac, hess, 0, direction, 
+        return find_CI_bound(x0, fun, 0, direction, jac, hess, 
                                      **profile_LL_args)
     
     
@@ -3222,11 +3207,11 @@ class SubbasinSubbasinAnglerTrafficModel(HierarchichalPrinter, SeparatelySaveabl
             return result
         
         print("Finding lower CI")
-        lowerCI = find_CI_bound(x0, fun, jac, hess, 0, -1, nmax=nmax,
+        lowerCI = find_CI_bound(x0, fun,  0, -1, jac, hess,nmax=nmax,
                                 disp=disp, **profile_LL_args).x[0]
         print("lowerCI", lowerCI)
         print("Finding upper CI")
-        upperCI = find_CI_bound(x0, fun, jac, hess, 0, 1, nmax=nmax,
+        upperCI = find_CI_bound(x0, fun, 0, 1, jac, hess, nmax=nmax,
                                 disp=disp, **profile_LL_args).x[0]
         print("upperCI", upperCI)
         
